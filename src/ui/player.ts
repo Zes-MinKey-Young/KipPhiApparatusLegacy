@@ -176,7 +176,13 @@ class Player {
         const timeCalculator = this.chart.timeCalculator
         const beats = this.beats;
         // const timeCalculator = this.chart.timeCalculator
-        const [x, y, theta, alpha] = judgeLine.getValues(beats)
+        const alpha = judgeLine.getStackedValue("alpha", beats);
+        if (judgeLine.nnLists.size === 0 && judgeLine.hnLists.size === 0 && alpha <= 0 && judgeLine.children.size === 0) {
+            return;
+        }
+        const x = judgeLine.getStackedValue("moveX", beats);
+        const y = judgeLine.getStackedValue("moveY", beats);
+        const theta = judgeLine.getStackedValue("rotate", beats) * Math.PI / 180;
         judgeLine.moveX = x;
         judgeLine.moveY = y;
         judgeLine.rotate = theta;
@@ -224,6 +230,7 @@ class Player {
             }
             return [startY, endY]
         }
+        /*
         const drawScope = (y: number) => {
             if (y<=1e-6) return
             context.save()
@@ -234,6 +241,7 @@ class Player {
             context.restore()
 
         }
+        */
 
         const hitRenderLimit = beats > 0.66 ? beats - 0.66 : 0 // 渲染 0.66秒内的打击特效
         const holdTrees = judgeLine.hnLists;
@@ -457,10 +465,12 @@ class Player {
         }
         let image: HTMLImageElement | OffscreenCanvas | ImageBitmap = note.tint ? this.getTintNote(note.tint, note.type) : getImageFromType(note.type);
         const context = this.context;
+        let zero = 0;
         
         if (note.yOffset) {
             positionY += note.yOffset;
             endpositionY += note.yOffset;
+            zero = note.yOffset;
         }
         if (!note.above) {
             positionY = -positionY;
@@ -478,8 +488,8 @@ class Player {
         }
         if (note.type === NoteType.hold) {
             const isJudging = TimeCalculator.toBeats(note.startTime) <= this.beats
-            positionY = isJudging ? 0 : positionY;
-            length = isJudging ? (endpositionY) : length;
+            positionY = isJudging ? zero : positionY;
+            length = isJudging ? (endpositionY - zero) : length;
             context.drawImage(HOLD_BODY, note.positionX - half, positionY - 10, size, length);
         }
             
