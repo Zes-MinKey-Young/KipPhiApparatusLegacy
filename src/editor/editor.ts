@@ -631,7 +631,7 @@ class Editor extends EventTarget {
     }
     loadChart() {
         const assignChart = (chart: Chart) => {
-            this.player.chart = chart;
+            this.player.receive(chart);
             this.chart = chart;
             this.operationList = new OperationList(chart);
             this.judgeLinesEditor = new JudgeLinesEditor(this, this.lineInfoEle)

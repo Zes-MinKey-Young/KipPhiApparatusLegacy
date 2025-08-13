@@ -26,7 +26,7 @@ class Player {
     aspect: number;
     noteSize: number;
     noteHeight: number;
-    soundQueue: SoundEntity[];
+    // soundQueue: SoundEntity[];
     lastBeats: number
 
     tintNotesMapping: Map<HEX, OffscreenCanvas | ImageBitmap> = new Map();
@@ -50,7 +50,6 @@ class Player {
             this.playing = false;
         })
         this.initGreyScreen();
-        this.soundQueue = []
     }
     get time(): number {
         return (this.audio.currentTime || 0) - this.chart.offset / 1000 - 0.017;
@@ -155,19 +154,7 @@ class Player {
             context.save()
         }
 
-        const timeLimit = this.time - 0.033
-        if (this.playing) {
-            const queue = this.soundQueue;
-            const len = queue.length;
-            for (let i = 0; i < len; i++) {
-                const SoundEntity = queue[i];
-                if (SoundEntity.seconds < timeLimit) {
-                    continue;
-                }
-                this.audioProcessor.playNoteSound(SoundEntity.type);
-            }
-        }
-        this.soundQueue = [];
+        // this.soundQueue = [];
         
         // console.timeEnd("render")
     }
@@ -246,7 +233,6 @@ class Player {
         const hitRenderLimit = beats > 0.66 ? beats - 0.66 : 0 // 渲染 0.66秒内的打击特效
         const holdTrees = judgeLine.hnLists;
         const noteTrees = judgeLine.nnLists;
-        const soundQueue = this.soundQueue
         // console.time("Updating integral");
         if (holdTrees.size || noteTrees.size) {
             judgeLine.updateSpeedIntegralFrom(beats, timeCalculator)
@@ -291,10 +277,6 @@ class Player {
                     }
                     // console.timeEnd("Rendering notes");
                 }
-                // console.time("Rendering sounds");
-                // 处理音效
-                this.renderSounds(list, beats, soundQueue, timeCalculator);
-                // console.timeEnd("Rendering sounds");
                 // console.time("Rendering hit effects");
                 // 打击特效
                 if (beats > 0) {
@@ -309,6 +291,9 @@ class Player {
             }
 
         }
+
+        this.playSounds()
+
         
         
         /*
@@ -334,25 +319,48 @@ class Player {
         }
         */
     }
-    renderSounds(tree: NNList, beats: number, soundQueue: SoundEntity[], timeCalculator: TimeCalculator) {
-        const lastBeats = this.lastBeats
-        let node: Header<NoteNode> | NoteNode = tree.getNodeAt(beats).previous
-        while (true) {
-            if ("heading" in node || TimeCalculator.toBeats(node.startTime) < lastBeats) {
-                break;
-            }
-            
-            const notes = node.notes
-            , len = notes.length
-            for (let i = 0; i < len; i++) {
-                const note = notes[i];
-                if (note.isFake) {
-                    continue;
-                }
-                soundQueue.push(new SoundEntity(note.type, TimeCalculator.toBeats(note.startTime), timeCalculator))
-            }
-            node = node.previous
+    lastUnplayedNNNode: NNNode | Tailer<NNNode>;
+    playSounds() {
+        if (!this.playing) {
+            return;
         }
+        const beats = this.beats;
+        const lastNNN: TypeOrTailer<NNNode> = this.lastUnplayedNNNode;
+        const startingFrom = "tailing" in lastNNN ? Infinity : TimeCalculator.toBeats(lastNNN.startTime);
+        if (startingFrom >= beats) {
+            this.lastUnplayedNNNode = this.chart.nnnList.getNodeAt(beats)
+            return;
+        }
+        let node: TypeOrTailer<NNNode> = lastNNN;
+        for (; !("tailing" in node) && TimeCalculator.toBeats(node.startTime) < beats; node = node.next) {
+            const nns = node.noteNodes;
+            const hns = node.holdNodes;
+            const nnl = nns.length;
+            for (let i = 0; i < nnl; i++) {
+                const node: NoteNode = nns[i];
+                const nl = node.notes.length;
+                for (let j = 0; j < nl; j++) {
+                    const note = node.notes[j];
+                    if (note.isFake) {
+                        continue;
+                    }
+                    this.audioProcessor.playNoteSound(note.type);
+                }
+            }
+            const hnl = hns.length;
+            for (let i = 0; i < hnl; i++) {
+                const node: NoteNode = hns[i];
+                const nl = node.notes.length;
+                for (let j = 0; j < nl; j++) {
+                    const note: Note = node.notes[j];
+                    if (note.isFake) {
+                        continue;
+                    }
+                    this.audioProcessor.playNoteSound(NoteType.hold);
+                }
+            }
+        }
+        this.lastUnplayedNNNode = node;
     }
     renderHitEffects(matrix: Matrix, tree: NNList, startBeats: number, endBeats: number, timeCalculator: TimeCalculator) {
         let noteNode = tree.getNodeAt(startBeats, true);
@@ -568,6 +576,10 @@ class Player {
     pause() {
         this.playing = false;
         this.audio.pause()
+    }
+    receive(chart: Chart) {
+        this.chart = chart;
+        this.lastUnplayedNNNode = chart.nnnList.head.next;
     }
 }
 
