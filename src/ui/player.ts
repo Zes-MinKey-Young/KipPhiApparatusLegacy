@@ -259,11 +259,11 @@ class Player {
                         // drawScope(judgeLine.getStackedIntegral(start, timeCalculator))
                         // drawScope(judgeLine.getStackedIntegral(end, timeCalculator))
                         
-                        let noteNode: TypeOrTailer<NoteNode> = list.getNodeAt(start, true);
+                        let noteNode: NNOrTail = list.getNodeAt(start, true);
                         // console.log(noteNode)
                         let startBeats;
                         
-                        while (!("tailing" in noteNode)
+                        while (!(noteNode.type === NodeType.TAIL)
                             && (startBeats = TimeCalculator.toBeats(noteNode.startTime)) < end
                         ) {
                             // 判断是否为多押
@@ -319,20 +319,20 @@ class Player {
         }
         */
     }
-    lastUnplayedNNNode: NNNode | Tailer<NNNode>;
+    lastUnplayedNNNode: NNNode | NNNodeLike<NodeType.TAIL>;
     playSounds() {
         if (!this.playing) {
             return;
         }
         const beats = this.beats;
         const lastNNN: TypeOrTailer<NNNode> = this.lastUnplayedNNNode;
-        const startingFrom = "tailing" in lastNNN ? Infinity : TimeCalculator.toBeats(lastNNN.startTime);
+        const startingFrom = lastNNN.type === NodeType.TAIL ? Infinity : TimeCalculator.toBeats(lastNNN.startTime);
         if (startingFrom >= beats) {
             this.lastUnplayedNNNode = this.chart.nnnList.getNodeAt(beats)
             return;
         }
         let node: TypeOrTailer<NNNode> = lastNNN;
-        for (; !("tailing" in node) && TimeCalculator.toBeats(node.startTime) < beats; node = node.next) {
+        for (; !(node.type === NodeType.TAIL) && TimeCalculator.toBeats(node.startTime) < beats; node = node.next) {
             const nns = node.noteNodes;
             const hns = node.holdNodes;
             const nnl = nns.length;
@@ -367,7 +367,7 @@ class Player {
         const {hitContext} = this;
         // console.log(hitContext.getTransform())
         const end = tree.getNodeAt(endBeats);
-        if ("tailing" in noteNode) {
+        if (noteNode.type === NodeType.TAIL) {
             return;
         }
         while (noteNode !== end) {
@@ -406,7 +406,7 @@ class Player {
         const {hitContext} = this;
         let noteNode = start;
         const end = tree.getNodeAt(endBeats);
-        if ("tailing" in noteNode) {
+        if (noteNode.type === NodeType.TAIL) {
             return;
         }
         if (noteNode !== end)

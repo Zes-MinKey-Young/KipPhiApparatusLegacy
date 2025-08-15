@@ -19,6 +19,21 @@ function arrEq<T>(arr1: Array<T>, arr2: Array<T>) {
     return true;
 }
 
+class EventNodeLike<T extends NodeType> {
+    type: T;
+    /** 后一个事件节点 */
+    next: [EventStartNode, null, ENOrTail][T] | null = null;
+    /** 前一个事件节点 */
+    previous: [null, EventStartNode, ENOrHead][T] | null = null;
+    parentSeq: EventNodeSequence;
+    constructor(type: T) {
+        this.type = type;
+    }
+}
+type ENOrTail = EventNode | EventNodeLike<NodeType.TAIL>;
+type ENOrHead = EventNode | EventNodeLike<NodeType.HEAD>;
+type AnyEN = EventNode | EventNodeLike<NodeType.HEAD> | EventNodeLike<NodeType.TAIL>;
+
 /**
  * 事件节点基类
  * event node.
@@ -34,20 +49,14 @@ function arrEq<T>(arr1: Array<T>, arr2: Array<T>) {
  * 与RPE不同的是，KPA使用两个节点来表示一个事件，而不是一个对象。
  * Different from that in RPE, KPA uses two nodes rather than one object to represent an event.
  */
-abstract class EventNode {
+abstract class EventNode extends EventNodeLike<NodeType.MIDDLE> {
     time: TimeT;
     value: number;
     easing: Easing;
-    /** 后一个事件节点 */
-    next: EventNode | Tailer<EventNode>;
-    /** 前一个事件节点 */
-    previous: EventNode | Header<EventNode>;
-    abstract parentSeq: EventNodeSequence;
     constructor(time: TimeT, value: number) {
+        super(NodeType.MIDDLE);
         this.time = time;
         this.value = value ?? 0;
-        this.previous = null;
-        this.next = null;
         this.easing = linearEasing
     }
     clone(offset: TimeT): EventStartNode | EventEndNode {
@@ -102,9 +111,9 @@ abstract class EventNode {
         }
         return [start, end]
     }
-    static connect(node1: EventStartNode, node2: EventEndNode | Tailer<EventStartNode>): void
-    static connect(node1: EventEndNode | Header<EventStartNode>, node2: EventStartNode): void
-    static connect(node1: EventNode | Header<EventNode>, node2: EventNode | Tailer<EventNode>): void {
+    static connect(node1: EventStartNode, node2: EventEndNode | EventNodeLike<NodeType.TAIL>): void
+    static connect(node1: EventEndNode | EventNodeLike<NodeType.HEAD>, node2: EventStartNode): void
+    static connect(node1: ENOrHead, node2: ENOrTail): void {
         node1.next = node2;
         node2.previous = node1;
         if (node1 && node2) {
@@ -118,7 +127,7 @@ abstract class EventNode {
         node.next = null;
     }
     */
-    static removeNodePair(endNode: EventEndNode, startNode: EventStartNode): [EventStartNode | Header<EventStartNode>, EventStartNode | Tailer<EventStartNode>] {
+    static removeNodePair(endNode: EventEndNode, startNode: EventStartNode): [EventStartNode | EventNodeLike<NodeType.HEAD>, EventStartNode | EventNodeLike<NodeType.TAIL>] {
         const prev = endNode.previous;
         const next = startNode.next;
         prev.next = next;
@@ -127,9 +136,9 @@ abstract class EventNode {
         startNode.next = null;
         return [this.previousStartOfStart(prev), this.nextStartOfEnd(next)]
     }
-    static insert(node: EventStartNode, tarPrev: EventStartNode): [Header<EventStartNode> | EventStartNode, EventStartNode | Tailer<EventStartNode>] {
+    static insert(node: EventStartNode, tarPrev: EventStartNode): [EventNodeLike<NodeType.HEAD> | EventStartNode, EventStartNode | EventNodeLike<NodeType.TAIL>] {
         const tarNext = tarPrev.next;
-        if ("heading" in node.previous) {
+        if (node.previous.type === NodeType.HEAD) {
             throw new Error("Cannot insert a head node before any node");
         }
         this.connect(tarPrev, node.previous);
@@ -143,28 +152,28 @@ abstract class EventNode {
      * @returns the next node if it is a tailer, otherwise the next start node
      */
     static nextStartOfStart(node: EventStartNode) {
-        return "tailing" in node.next ? node.next : node.next.next
+        return node.next.type === NodeType.TAIL ? node.next : node.next.next
     }
     /**
      * 
      * @param node 
      * @returns itself if node is a tailer, otherwise the next start node
      */
-    static nextStartOfEnd(node: EventEndNode | Tailer<EventStartNode>) {
-        return "tailing" in node ? node : node.next
+    static nextStartOfEnd(node: EventEndNode | EventNodeLike<NodeType.TAIL>) {
+        return node.type === NodeType.TAIL ? node : node.next
     }
-    static previousStartOfStart(node: EventStartNode): EventStartNode | Header<EventStartNode> {
-        return "heading" in node.previous ? node.previous : node.previous.previous;
+    static previousStartOfStart(node: EventStartNode): EventStartNode | EventNodeLike<NodeType.HEAD> {
+        return node.previous.type === NodeType.HEAD ? node.previous : node.previous.previous;
     }
     /**
      * It does not return the start node which form an event with it.
      * @param node 
      * @returns 
      */
-    static secondPreviousStartOfEnd(node: EventEndNode): EventStartNode | Header<EventStartNode> {
+    static secondPreviousStartOfEnd(node: EventEndNode): EventStartNode | EventNodeLike<NodeType.HEAD> {
         return this.previousStartOfStart(node.previous);
     }
-    static nextStartInJumpArray(node: EventStartNode): EventStartNode | Tailer<EventStartNode> {
+    static nextStartInJumpArray(node: EventStartNode): EventStartNode | EventNodeLike<NodeType.TAIL> {
         if ((<EventEndNode>node.next).next.isLastStart()) {
             return node.next.next.next;
         } else {
@@ -245,29 +254,12 @@ abstract class EventNode {
     }
     // #endregion
 }
-/*
-enum EventNodeType {
-    first,
-    middle,
-    last
-}
 
 
-interface StartNextMap {
-    [EventNodeType.first]: EventEndNode;
-    [EventNodeType.middle]: EventEndNode;
-    [EventNodeType.last]: Tailer<EventStartNode<EventNodeType.last>>;
-}
-interface StartPreviousMap {
-    [EventNodeType.first]: Header<EventStartNode<EventNodeType.first>>;
-    [EventNodeType.middle]: EventEndNode;
-    [EventNodeType.last]: EventEndNode;
-}
-*/
 
 class EventStartNode extends EventNode {
-    next: EventEndNode | Tailer<EventStartNode>;
-    previous: EventEndNode | Header<EventStartNode>;
+    next: EventEndNode | EventNodeLike<NodeType.TAIL>;
+    previous: EventEndNode | EventNodeLike<NodeType.HEAD>;
     /** 
      * 对于速度事件，从计算时的时刻到此节点的总积分
      */
@@ -338,7 +330,7 @@ class EventStartNode extends EventNode {
     getValueAt(beats: number) {
         // 除了尾部的开始节点，其他都有下个节点
         // 钩定型缓动也有
-        if ("tailing" in this.next) {
+        if (this.next.type === NodeType.TAIL) {
             return this.value;
         }
         let timeDelta = TimeCalculator.getDelta(this.next.time, this.time)
@@ -361,7 +353,7 @@ class EventStartNode extends EventNode {
         return this.value + this.easing.getValue(current / timeDelta) * valueDelta
     }
     getSpeedValueAt(beats: number) {
-        if ("tailing" in this.next) {
+        if (this.next.type === NodeType.TAIL) {
             return this.value
         }
         let timeDelta = TimeCalculator.getDelta(this.next.time, this.time)
@@ -380,7 +372,7 @@ class EventStartNode extends EventNode {
         return timeCalculator.segmentToSeconds(TimeCalculator.toBeats(this.time), beats) * (this.value + this.getSpeedValueAt(beats)) / 2 * 120 // 每单位120px
     }
     getFullIntegral(timeCalculator: TimeCalculator) {
-        if ("tailing" in this.next) {
+        if (this.next.type === NodeType.TAIL) {
             console.log(this)
             throw new Error("getFullIntegral不可用于尾部节点")
         }
@@ -391,16 +383,16 @@ class EventStartNode extends EventNode {
         return timeCalculator.segmentToSeconds(startBeats, endBeats) * (this.value + end.value) / 2 * 120
     }
     isFirstStart() {
-        return this.previous && "heading" in this.previous
+        return this.previous && this.previous.type === NodeType.HEAD
     }
     isLastStart() {
-        return this.next && "tailing" in this.next
+        return this.next && this.next.type === NodeType.TAIL
     }
     clone(offset?: TimeT): EventStartNode {
         return super.clone(offset) as EventStartNode;
     };
     clonePair(offset: TimeT): EventStartNode {
-        const endNode = !("heading" in this.previous) ? this.previous.clone(offset) : new EventEndNode(this.time, this.value);
+        const endNode = this.previous.type !== NodeType.HEAD ? this.previous.clone(offset) : new EventEndNode(this.time, this.value);
         const startNode = this.clone(offset);
         EventNode.connect(endNode, startNode);
         return startNode;
@@ -427,15 +419,11 @@ class EventStartNode extends EventNode {
         context.stroke();
     }
 }
-/*
-type AnyStartNode = EventStartNode<EventNodeType.first>
-                  | EventStartNode<EventNodeType.middle>
-                  | EventStartNode<EventNodeType.last>
-                  */
+
 class EventEndNode extends EventNode {
     next: EventStartNode;
     previous: EventStartNode;
-    get parentSeq() {return this.previous?.parentSeq}
+    get parentSeq() {return this.previous?.parentSeq || null}
     set parentSeq(_parent: EventNodeSequence) {}
     constructor(time: TimeT, value: number) {
         super(time, value);
@@ -473,10 +461,10 @@ class EventNodeSequence {
     /** id follows the format `#${lineid}.${layerid}.${typename}` by default */
     id: string;
     /** has no time or value */
-    head: Header<EventStartNode>;
+    head: EventNodeLike<NodeType.HEAD>;
     /** has no time or value */
-    tail: Tailer<EventStartNode>;
-    jump?: JumpArray<EventStartNode>;
+    tail: EventNodeLike<NodeType.TAIL>;
+    jump?: JumpArray<AnyEN>;
     listLength: number;
     /** 一定是二的幂，避免浮点误差 */
     jumpAverageBeats: number;
@@ -485,16 +473,8 @@ class EventNodeSequence {
     // endNodes: EventEndNode[];
     // eventTime: Float64Array;
     constructor(public type: EventType, public effectiveBeats: number) {
-        this.head = {
-            heading: true,
-            next: null,
-            parentSeq: this
-        };
-        this.tail = {
-            tailing: true,
-            previous: null,
-            parentSeq: this
-        }
+        this.head = new EventNodeLike(NodeType.HEAD);
+        this.tail = new EventNodeLike(NodeType.TAIL);
         this.listLength = 1;
         // this.head = this.tail = new EventStartNode([0, 0, 0], 0)
         // this.nodes = [];
@@ -508,13 +488,13 @@ class EventNodeSequence {
         // console.log(isSpeed)
         const seq = new EventNodeSequence(type, type === EventType.easing ? TimeCalculator.toBeats(data[length - 1].endTime) : chart.effectiveBeats);
         let listLength = length;
-        let lastEnd: EventEndNode | Header<EventStartNode> = seq.head
+        let lastEnd: EventEndNode | EventNodeLike<NodeType.HEAD> = seq.head
 
         let lastIntegral: number = 0;
         for (let index = 0; index < length; index++) {
             const event = data[index];
             let [start, end] = EventNode.fromEvent(event, templates);
-            if ("heading" in lastEnd) {
+            if (lastEnd.type === NodeType.HEAD) {
                 EventNode.connect(lastEnd, start)
             } else if (lastEnd.value === lastEnd.previous.value && lastEnd.previous.easing instanceof NormalEasing) {
                 lastEnd.time = start.time
@@ -605,18 +585,18 @@ class EventNodeSequence {
         if (this.head.next === this.tail.previous) {
             return;
         }
-        this.jump = new JumpArray<EventStartNode>(
+        this.jump = new JumpArray<AnyEN>(
             this.head,
             this.tail,
             originalListLength,
             effectiveBeats,
             (node) => {
                 // console.log(node)
-                if ("tailing" in node) {
+                if (node.type === NodeType.TAIL) {
                     return [null, null]
                 }
-                if ("heading" in node) {
-                    if ("tailing" in node.next.next) {
+                if (node.type === NodeType.HEAD) {
+                    if (node.next.next.type === NodeType.TAIL) {
                         return [0, node.next.next]
                     }
                     return [0, node.next]
@@ -624,7 +604,7 @@ class EventNodeSequence {
                 const endNode =  <EventEndNode>(<EventStartNode>node).next;
                 const time = TimeCalculator.toBeats(endNode.time);
                 const nextNode = endNode.next;
-                if ("tailing" in nextNode.next) {
+                if (nextNode.next.type === NodeType.TAIL) {
                     return [time, nextNode.next] // Tailer代替最后一个StartNode去占位
                 } else {
                     return [time, nextNode]
@@ -634,15 +614,15 @@ class EventNodeSequence {
                 return TimeCalculator.toBeats((<EventEndNode>node.next).time) > beats ? false : EventNode.nextStartInJumpArray(node)
             },
             (node: EventStartNode) => {
-                return node.next && "tailing" in node.next ? node.next : node;
+                return node.next && node.next.type === NodeType.TAIL ? node.next : node;
             }
             /*(node: EventStartNode) => {
                 const prev = node.previous;
-                return "heading" in prev ? node : prev.previous;
+                return prev.type === NodeType.HEAD ? node : prev.previous;
             }*/
             )
     }
-    updateJump(from: TypeOrHeader<EventStartNode>, to: TypeOrTailer<EventStartNode>) {
+    updateJump(from: ENOrHead, to: ENOrTail) {
         if (!this.jump || this.effectiveBeats !== this.jump.effectiveBeats) {
             this.initJump();
 
@@ -653,8 +633,8 @@ class EventNodeSequence {
 
     }
     getNodeAt(beats: number, usePrev: boolean = false): EventStartNode {
-        let node = this.jump?.getNodeAt(beats) || this.head.next;
-        if ("tailing" in node) {
+        let node = this.jump?.getNodeAt(beats) as (EventStartNode | EventNodeLike<NodeType.TAIL>) || this.head.next as (EventStartNode | EventNodeLike<NodeType.TAIL>);
+        if (node.type === NodeType.TAIL) {
             if (usePrev) {
                 return node.previous.previous.previous;
             }
@@ -663,7 +643,7 @@ class EventNodeSequence {
         }
         if (usePrev && TimeCalculator.toBeats(node.time) === beats) {
             const prev = node.previous;
-            if (!("heading" in prev)) {
+            if (!(prev.type === NodeType.HEAD)) {
                 node = prev.previous;
             }
         }
@@ -683,8 +663,8 @@ class EventNodeSequence {
         let previousStartNode = this.getNodeAt(beats);
         previousStartNode.cachedIntegral = -previousStartNode.getIntegral(beats, timeCalculator);
         let totalIntegral: number = previousStartNode.cachedIntegral
-        let endNode: EventEndNode | Tailer<EventStartNode>;
-        while (!("tailing" in (endNode = previousStartNode.next))) {
+        let endNode: EventEndNode | EventNodeLike<NodeType.TAIL>;
+        while ((endNode = previousStartNode.next).type !== NodeType.TAIL) {
             const currentStartNode = endNode.next
             totalIntegral += previousStartNode.getFullIntegral(timeCalculator);
             currentStartNode.cachedIntegral = totalIntegral;
@@ -695,7 +675,7 @@ class EventNodeSequence {
         const nodes: EventDataRPE[] = [];
         let currentNode: EventStartNode = this.head.next;
 
-        while (currentNode && !("tailing" in currentNode.next)) {
+        while (currentNode && !(currentNode.next.type === NodeType.TAIL)) {
 
             const eventData: EventDataRPE = currentNode.dump();
 

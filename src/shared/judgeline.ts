@@ -65,7 +65,7 @@ class JudgeLine {
                 }
                 const tree = line.getNNList(note.speed, note.yOffset, note.type === NoteType.hold, false)
                 const cur = tree.currentPoint
-                const lastHoldTime: TimeT = "heading" in cur ? [-1, 0, 1] : cur.startTime
+                const lastHoldTime: TimeT = cur.type === NodeType.HEAD ? [-1, 0, 1] : cur.startTime
                 if (TimeCalculator.eq(lastHoldTime, note.startTime)) {
                     (<NoteNode>tree.currentPoint).add(note)
                 } else {
@@ -178,7 +178,7 @@ class JudgeLine {
                 if (!note.visibleBeats) {
                     note.computeVisibleBeats(timeCalculator)
                 }
-                if (!("heading" in cur) && TC.eq(noteData.startTime, cur.startTime)) {
+                if (!(cur.type === NodeType.HEAD) && TC.eq(noteData.startTime, cur.startTime)) {
                     cur.add(note);
                 } else {
                     const node = new NoteNode(noteData.startTime);
@@ -219,11 +219,11 @@ class JudgeLine {
             if (!sequence) {
                 continue;
             }
-            let node: EventStartNode | Tailer<EventStartNode> = sequence.getNodeAt(beats);
-            let endNode: EventEndNode | Tailer<EventStartNode>
+            let node: EventStartNode = sequence.getNodeAt(beats);
+            let endNode: EventEndNode | EventNodeLike<NodeType.TAIL>
             while (true) {
                 times.push(TimeCalculator.toBeats(node.time))
-                if ("tailing" in (endNode = node.next)) {
+                if ((endNode = node.next).type === NodeType.TAIL) {
                     break;
                 }
 

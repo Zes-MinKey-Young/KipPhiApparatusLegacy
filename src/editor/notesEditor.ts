@@ -586,7 +586,7 @@ class NotesEditor extends Z<"div"> {
                         if (node !== lastNode) {
                             switchColor()
                             lastNode = node
-                            context.fillText("tailing" in node ? "Tail" : node.id.toString(), x - 30, y - j * minorAverageBeats * timeRatio)
+                            context.fillText(node.type === NodeType.TAIL ? "Tail" : node.id.toString(), x - 30, y - j * minorAverageBeats * timeRatio)
                         }
                         drawLine(context, x - 4, y - j * minorAverageBeats * timeRatio, x, y - (j + 1) * minorAverageBeats * timeRatio + 5)
                     }
@@ -595,7 +595,7 @@ class NotesEditor extends Z<"div"> {
                         switchColor()
                         lastNode = scale
                     }
-                    context.fillText("tailing" in scale ? "Tail" : scale.id.toString(), x - 30, y)
+                    context.fillText(scale.type === NodeType.TAIL ? "Tail" : scale.id.toString(), x - 30, y)
                     drawLine(context, x - 10, y, x + 10, y - averageBeats * timeRatio + 5)
                 }
             }
@@ -612,7 +612,7 @@ class NotesEditor extends Z<"div"> {
                         if (node !== lastNode) {
                             switchColor()
                             lastNode = node
-                            context.fillText("tailing" in node ? "Tail" : `${node.id} (${timeToString(node.startTime)}-${timeToString(node.endTime)})`, x2 + 10, y - j * minorAverageBeats * timeRatio)
+                            context.fillText(node.type === NodeType.TAIL ? "Tail" : `${node.id} (${timeToString(node.startTime)}-${timeToString(node.endTime)})`, x2 + 10, y - j * minorAverageBeats * timeRatio)
                         }
                         drawLine(context, x2 - 4, y - j * minorAverageBeats * timeRatio, x2, y - (j + 1) * minorAverageBeats * timeRatio + 5)
                     }
@@ -621,7 +621,7 @@ class NotesEditor extends Z<"div"> {
                         switchColor()
                         lastNode = scale
                     }
-                    context.fillText("tailing" in scale ? "Tail" : `${scale.id} (${timeToString(scale.startTime)}-${timeToString(scale.endTime)})`, x2 + 10, y)
+                    context.fillText(scale.type === NodeType.TAIL ? "Tail" : `${scale.id} (${timeToString(scale.startTime)}-${timeToString(scale.endTime)})`, x2 + 10, y)
                     drawLine(context, x2 - 10, y, x2 + 10, y - averageBeats * timeRatio + 5)
                 }
             }
@@ -641,10 +641,10 @@ class NotesEditor extends Z<"div"> {
     drawNNList(tree: NNList, beats: number) {
         const timeRange = this.timeSpan
         let noteNode = tree.getNodeAt(beats, true);
-        if ("tailing" in noteNode) {
+        if (noteNode.type === NodeType.TAIL) {
             return
         }
-        while (!("tailing" in noteNode) && TimeCalculator.toBeats(noteNode.startTime) < beats + timeRange) {
+        while (!(noteNode.type === NodeType.TAIL) && TimeCalculator.toBeats(noteNode.startTime) < beats + timeRange) {
             const notes = noteNode.notes
                 , length = notes.length
             const posMap = new Map<number, number>();

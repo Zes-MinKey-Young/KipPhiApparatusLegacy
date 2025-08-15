@@ -64,7 +64,7 @@ class RPEChartCompiler {
         let node = sequence.head.next;
         while (true) {
             const end = node.next;
-            if ("tailing" in end) break;
+            if (end.type === NodeType.TAIL) break;
             nodes.push(node.dump());
             node = end.next;
         }
@@ -111,7 +111,7 @@ class RPEChartCompiler {
     nnListToArray(nnList: NNList) {
         const notes: NoteDataRPE[] = [];
         let node: TypeOrHeader<NoteNode> = nnList.tail.previous;
-        while (!("heading" in node)) {
+        while (!(node.type === NodeType.HEAD)) {
             for (let each of node.notes) {
                 notes.push(each.dumpRPE());
             }
@@ -138,7 +138,7 @@ class RPEChartCompiler {
         map.set(seq, newSeq);
         let currentPos: Header<EventStartNode> | EventEndNode = newSeq.head;
         while (true) {
-            if (!currentNode || ("tailing" in currentNode.next)) {
+            if (!currentNode || (currentNode.next.type === NodeType.TAIL)) {
                 break;
             }
             const endNode = currentNode.next;
@@ -162,7 +162,7 @@ class RPEChartCompiler {
                 let node = quoted.head.next;
                 while (true) {
                     const end = node.next;
-                    if ("tailing" in end) {
+                    if (end.type === NodeType.TAIL) {
                         break;
                     }
                     const newNode = new EventStartNode(convertTime(node.time), convert(node.value));

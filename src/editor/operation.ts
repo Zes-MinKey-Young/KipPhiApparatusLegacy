@@ -566,7 +566,7 @@ class EventNodeTimeChangeOperation extends Operation {
     newPrevious: EventStartNode;
     constructor(node: EventStartNode | EventEndNode, val: TimeT) {
         super()
-        if ("heading" in node.previous) {
+        if (node.previous.type === NodeType.HEAD) {
             this.ineffective = true;
             return;
         }

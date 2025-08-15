@@ -5,7 +5,8 @@ class BPMStartNode extends EventStartNode {
     spb: number;
     cachedStartIntegral?: number;
     cachedIntegral?: number;
-    next: BPMEndNode | Tailer<BPMStartNode>;
+    next: BPMEndNode | BPMNodeLike<NodeType.TAIL>;
+    previous: BPMEndNode | BPMNodeLike<NodeType.HEAD>;
     constructor(startTime: TimeT, bpm: number) {
         super(startTime, bpm);
         this.spb = 60 / bpm;
@@ -42,6 +43,15 @@ class BPMEndNode extends EventEndNode {
     set value(val) {}
 }
 
+interface BPMNodeLike<T extends NodeType> extends EventNodeLike<T> {
+    next: [BPMStartNode, null, BNOrTail][T] | null;
+    previous: [null, BPMStartNode, BNOrHead][T] | null;
+}
+type BPMNode = BPMStartNode | BPMEndNode;
+type AnyBN = (BPMNode | BPMNodeLike<NodeType.TAIL> | BPMNodeLike<NodeType.HEAD>);
+type BNOrTail = BPMNode | BPMNodeLike<NodeType.TAIL>;
+type BNOrHead = BPMNode | BPMNodeLike<NodeType.HEAD>;
+
 /**
  * 拥有与事件类似的逻辑
  * 每对节点之间代表一个BPM相同的片段
@@ -49,15 +59,15 @@ class BPMEndNode extends EventEndNode {
  */
 
 class BPMSequence extends EventNodeSequence {
-    head: Header<BPMStartNode>;
-    tail: Tailer<BPMStartNode>;
+    head: BPMNodeLike<NodeType.HEAD>;
+    tail: BPMNodeLike<NodeType.TAIL>;
     /** 从拍数访问节点 */
-    jump: JumpArray<EventStartNode>;
+    jump: JumpArray<AnyBN>;
     /** 以秒计时的跳数组，处理从秒访问节点 */
-    secondJump: JumpArray<BPMStartNode>;
+    secondJump: JumpArray<AnyBN>;
     constructor(bpmList: BPMSegmentData[], public duration: number) {
         super(EventType.bpm, null);
-        let curPos: Header<BPMStartNode> | BPMEndNode = this.head;
+        let curPos: BPMNodeLike<NodeType.HEAD> | BPMEndNode = this.head;
         let next = bpmList[0];
         this.listLength = bpmList.length;
         for (let i = 1; i < bpmList.length; i++) {
@@ -89,7 +99,7 @@ class BPMSequence extends EventNodeSequence {
         let node: BPMStartNode = this.head.next;
         while (true) {
             node.cachedStartIntegral = integral;
-            if ("tailing" in node.next) {
+            if (node.next.type === NodeType.TAIL) {
                 break;
             }
             const endNode = <BPMEndNode>(<BPMStartNode>node).next;
@@ -103,22 +113,22 @@ class BPMSequence extends EventNodeSequence {
             return;
         }
         const originalListLength = this.listLength;
-        this.secondJump = new JumpArray(
+        this.secondJump = new JumpArray<AnyBN>(
             this.head,
             this.tail,
             originalListLength,
             this.duration,
             (node) => {
-                if ("tailing" in node) {
+                if (node.type === NodeType.TAIL) {
                     return [null, null];
                 }
-                if ("heading" in node) {
+                if (node.type === NodeType.HEAD) {
                     return [0, node.next];
                 }
                 const endNode = <BPMEndNode>(<BPMStartNode>node).next;
                 const time = node.cachedIntegral;
                 const nextNode = endNode.next;
-                if ("tailing" in nextNode.next) {
+                if (nextNode.next.type === NodeType.TAIL) {
                     return [time, nextNode.next]; // Tailer代替最后一个StartNode去占位
                 } else {
                     return [time, nextNode];
@@ -139,7 +149,7 @@ class BPMSequence extends EventNodeSequence {
             return this.tail.previous
         }
         const node = this.secondJump.getNodeAt(seconds);
-        if ("tailing" in node) {
+        if (node.type === NodeType.TAIL) {
             return node.previous;
         }
         return node;
@@ -153,7 +163,7 @@ class BPMSequence extends EventNodeSequence {
                 startTime: cur.time
             })
             const end = cur.next;
-            if ("tailing" in end) {
+            if (end.type === NodeType.TAIL) {
                 break;
             }
             cur = end.next;

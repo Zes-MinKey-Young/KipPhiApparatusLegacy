@@ -755,13 +755,13 @@ class EventCurveEditor {
         const startBeats = beats - this.timeSpan / 2;
         const endBeats = beats + this.timeSpan / 2;
         let previousEndNode: EventEndNode | Header<EventStartNode> = this.target.getNodeAt(startBeats < 0 ? 0 : startBeats).previous || this.target.head; // 有点奇怪的操作
-        let previousTime = "heading" in previousEndNode ? 0: TimeCalculator.toBeats(previousEndNode.time);
+        let previousTime = previousEndNode.type === NodeType.HEAD ? 0: TimeCalculator.toBeats(previousEndNode.time);
         // 该数组用于自动调整网格
         const valueArray = [];
         while (previousTime < endBeats) {
             const startNode = previousEndNode.next;
             const endNode = startNode.next;
-            if ("tailing" in endNode) {
+            if (endNode.type === NodeType.TAIL) {
                 break;
             }
             const startTime = TimeCalculator.toBeats(startNode.time);
@@ -818,7 +818,7 @@ class EventCurveEditor {
             previousEndNode = endNode;
             previousTime = endTime;
         }
-        if ("tailing" in previousEndNode.next.next) {
+        if (previousEndNode.next.next.type === NodeType.TAIL) {
             const lastStart = previousEndNode.next;
             const startTime = TimeCalculator.toBeats(lastStart.time);
             const startValue = lastStart.value;

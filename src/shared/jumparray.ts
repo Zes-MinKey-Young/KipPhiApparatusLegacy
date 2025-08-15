@@ -3,14 +3,20 @@ const MIN_LENGTH = 128
 const MAX_LENGTH = 1024
 const MINOR_PARTS = 16;
 
-type EndNextFn<T extends TwoDirectionNode> = (node: TypeOrTailer<T> | Header<T>) => [endBeats: number, next: TypeOrTailer<T>];
+type EndNextFn<T extends TwoDirectionNode> = (node: T) => [endBeats: number, next: T];
 
 
-const breakpoint: () => never = () => {debugger}
-class JumpArray<T extends TwoDirectionNode> {
-    header: Header<T>;
-    tailer: Tailer<T>;
-    array: (TypeOrTailer<T>[] | TypeOrTailer<T>)[];
+
+interface TwoDirectionNodeLike {
+    next: this | null;
+    previous: this | null;
+    type: NodeType;
+}
+
+class JumpArray<T extends TwoDirectionNodeLike> {
+    header: T;
+    tailer: T;
+    array: (T[] | T)[];
     averageBeats: number;
     effectiveBeats: number;
     goPrev: (node: T) => T;
@@ -25,13 +31,13 @@ class JumpArray<T extends TwoDirectionNode> {
      * @param nextFn 接收一个节点，返回下个节点。如果应当停止，返回false。
      */
     constructor(
-        head: Header<T>,
-        tail: Tailer<T>,
+        head: T,
+        tail: T,
         originalListLength: number,
         effectiveBeats: number,
         public endNextFn: EndNextFn<T>,
         public nextFn: (node: T, beats: number) => T | false,
-        public resolveLastNode: (node: TypeOrTailer<T>) => TypeOrTailer<T> = (node) => node
+        public resolveLastNode: (node: T) => T = (node) => node
         // goPrev: (node: T) => T
         ) {
         this.header = head;
@@ -42,7 +48,7 @@ class JumpArray<T extends TwoDirectionNode> {
         const exactLength: number = Math.ceil(effectiveBeats / averageBeats);
         // console.log(exactLength, listLength, averageBeats, exactLength)
         // console.log(originalListLength, effectiveBeats, averageBeats, minorBeats, exactLength)
-        const jumpArray: (TypeOrTailer<T> | TypeOrTailer<T>[])[] = new Array(exactLength);
+        const jumpArray: (T | T[])[] = new Array(exactLength);
         this.array = jumpArray;
         this.averageBeats = averageBeats;
         this.effectiveBeats = exactLength * averageBeats;
@@ -79,7 +85,7 @@ class JumpArray<T extends TwoDirectionNode> {
      * @param firstNode 不含
      * @param lastNode 含
      */
-    updateRange(firstNode: TypeOrHeader<T>, lastNode: TypeOrTailer<T>) {
+    updateRange(firstNode: T, lastNode: T) {
         const {endNextFn, effectiveBeats, resolveLastNode} = this;
         lastNode = resolveLastNode(lastNode);
         console.log(firstNode, lastNode)
@@ -166,9 +172,8 @@ class JumpArray<T extends TwoDirectionNode> {
         const jumpAverageBeats = this.averageBeats;
         const jumpPos = Math.floor(beats / jumpAverageBeats);
         const rest = beats - jumpPos * jumpAverageBeats;
-        const nextFn = this.nextFn;
         for (let i = jumpPos; i >= 0; i--) {
-            let canBeNodeOrArray: TypeOrTailer<T> | TypeOrTailer<T>[] = this.array[i];
+            let canBeNodeOrArray: T | T[] = this.array[i];
             if (Array.isArray(canBeNodeOrArray)) {
                 const minorIndex = Math.floor(rest / (jumpAverageBeats / MINOR_PARTS)) - 1;
                 for (let j = minorIndex; j >= 0; j--) {
@@ -185,9 +190,9 @@ class JumpArray<T extends TwoDirectionNode> {
      * 
      * @param beats 拍数
      * @ param usePrev 可选，若设为true，则在取到事件头部时会返回前一个事件（即视为左开右闭）
-     * @returns 时间索引链表的节点
+     * @returns 时间索引链表的节点，一般不是head
      */
-    getNodeAt(beats: number): T | Tailer<T> {
+    getNodeAt(beats: number): T {
         if (beats < 0) {
             return this.header.next;
         }
@@ -198,11 +203,11 @@ class JumpArray<T extends TwoDirectionNode> {
         const jumpPos = Math.floor(beats / jumpAverageBeats);
         const rest = beats - jumpPos * jumpAverageBeats;
         const nextFn = this.nextFn;
-        let canBeNodeOrArray: TypeOrTailer<T> | TypeOrTailer<T>[] = this.array[jumpPos]
-        let node: TypeOrTailer<T> = Array.isArray(canBeNodeOrArray)
+        let canBeNodeOrArray: T | T[] = this.array[jumpPos]
+        let node: T = Array.isArray(canBeNodeOrArray)
             ? canBeNodeOrArray[Math.floor(rest / (jumpAverageBeats / MINOR_PARTS))]
             : canBeNodeOrArray;
-        if ("tailing" in node) {
+        if (node.type === NodeType.TAIL) {
             return node;
         }
         // console.log(this, node, jumpPos, beats)
@@ -214,7 +219,7 @@ class JumpArray<T extends TwoDirectionNode> {
         // console.log(this)
         while (next = nextFn(node, beats)) {
             node = next;
-            if ("tailing" in node) {
+            if (node.type === NodeType.TAIL) {
                 break;
             }
         }
@@ -222,23 +227,3 @@ class JumpArray<T extends TwoDirectionNode> {
     }
 }
 
-/**
- * @deprecated
- */
-class Pointer<T extends TwoDirectionNode> {
-    beats: number;
-    node: T | Tailer<T>;
-    before: number;
-    constructor() {
-        this.node = null;
-        this.beats = null;
-        this.before = 0;
-    }
-    pointTo(node: TypeOrTailer<T>, beats: number, counts: boolean=false) {
-        if (!node) {
-            debugger
-        }
-        this.node = node;
-        this.beats = beats
-    }
-}
