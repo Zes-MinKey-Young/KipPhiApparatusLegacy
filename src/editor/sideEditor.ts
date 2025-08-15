@@ -58,6 +58,7 @@ class NoteEditor extends SideEntityEditor<Note> {
     $tint          = new ZInputBox();
     $tintHitEffect = new ZInputBox();
     $judgeSize     = new ZInputBox();
+    $setAsDefault  = new ZButton("Set as default");
     $delete        = new ZButton("Delete").addClass("destructive");
     constructor() {
         super()
@@ -77,7 +78,7 @@ class NoteEditor extends SideEntityEditor<Note> {
             $("span").text("tint"), this.$tint,
             $("span").text("tintHitEffects"), this.$tintHitEffect,
             $("span").text("judgeSize"), this.$judgeSize,
-            $("span").text("del"), this.$delete,
+            this.$setAsDefault, this.$delete,
         )
         this.$time.onChange((t) => {
             editor.operationList.do(new NoteTimeChangeOperation(this.target, this.target.parentNode.parentSeq.getNodeOf(t)))
@@ -119,7 +120,21 @@ class NoteEditor extends SideEntityEditor<Note> {
         });
         this.$judgeSize.whenValueChange(() => {
             editor.operationList.do(new NoteValueChangeOperation(this.target, "judgeSize", this.$judgeSize.getNum()))
-        })
+        });
+        this.$setAsDefault.onClick(() => {
+            const note = this.target;
+            if (!note) {
+                return;
+            }
+            editor.notesEditor.defaultConfig = {
+                alpha: note.alpha,
+                size: note.size,
+                speed: note.speed,
+                isFake: note.isFake ? 1 : 0,
+                absoluteYOffset: note.yOffset,
+                visibleBeats: note.visibleBeats
+            }
+        });
     }
     update() {
         const note = this.target

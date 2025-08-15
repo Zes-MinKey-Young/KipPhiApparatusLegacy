@@ -475,6 +475,7 @@ class EventNodeSequence {
     constructor(public type: EventType, public effectiveBeats: number) {
         this.head = new EventNodeLike(NodeType.HEAD);
         this.tail = new EventNodeLike(NodeType.TAIL);
+        this.head.parentSeq = this.tail.parentSeq = this;
         this.listLength = 1;
         // this.head = this.tail = new EventStartNode([0, 0, 0], 0)
         // this.nodes = [];
@@ -521,10 +522,8 @@ class EventNodeSequence {
             // seq.nodes.push(start, end);
         }
         const last = lastEnd;
-        let tail;
-        tail = new EventStartNode(last.time ?? [0, 0, 1], endValue ?? last.value);
+        const tail = new EventStartNode(last.time ?? [0, 0, 1], endValue ?? last.value);
         EventNode.connect(last, tail);
-        // @ts-expect-error
         // last can be a header, in which case easing is undefined.
         // then we use the easing that initialized in the EventStartNode constructor.
         tail.easing = last.previous?.easing ?? tail.easing;

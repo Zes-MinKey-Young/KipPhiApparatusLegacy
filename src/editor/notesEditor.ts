@@ -48,7 +48,7 @@ class NotesEditor extends Z<"div"> {
     canvas: HTMLCanvasElement;
     context: CanvasRenderingContext2D;
     _target: JudgeLine;
-    targetTree?: NNList;
+    targetNNList?: NNList;
     positionBasis: number
     positionRatio: number;
     positionGridSpan: number;
@@ -91,6 +91,15 @@ class NotesEditor extends Z<"div"> {
     $editButton: ZSwitch;
     allOption: EditableBoxOption
     mouseIn: boolean;
+
+    defaultConfig = {
+        alpha: 255,
+        isFake: 0,
+        size: 1.0,
+        speed: 1.0,
+        absoluteYOffset: 0,
+        visibleBeats: undefined as number
+    }
     
     get target() {
         return this._target
@@ -112,32 +121,32 @@ class NotesEditor extends Z<"div"> {
                         name = t
                         lists[name] = list
                     },
-                    () => this.targetTree = list
+                    () => this.targetNNList = list
                     )
                 options.push(option)
             }
 
         }
         this.$optionBox.replaceWithOptions(options)
-        if (this.targetTree) {
-            const name = this.targetTree.id || "#1"
+        if (this.targetNNList) {
+            const name = this.targetNNList.id || "#1"
             options.forEach((option) => {
                 if (option.text === name) {
                     this.$optionBox.value = option
                 }
             })
-            if (this.targetTree instanceof HNList) {
+            if (this.targetNNList instanceof HNList) {
                 if (line.hnLists.has(name)) {
-                    this.targetTree = line.hnLists.get(name)
+                    this.targetNNList = line.hnLists.get(name)
                 } else {
-                    this.targetTree = null;
+                    this.targetNNList = null;
                     this.$optionBox.value = this.allOption
                 }
             } else {
                 if (line.nnLists.has(name)) {
-                    this.targetTree = line.nnLists.get(name);
+                    this.targetNNList = line.nnLists.get(name);
                 } else {
-                    this.targetTree = null;
+                    this.targetNNList = null;
                     this.$optionBox.value = this.allOption
                 }
             }
@@ -150,7 +159,7 @@ class NotesEditor extends Z<"div"> {
         this.addClass("notes-editor")
         this.selectionManager = new SelectionManager()
 
-        this.allOption = new EditableBoxOption("*", (_s, t) => {}, () => this.targetTree = null, () => undefined, false)
+        this.allOption = new EditableBoxOption("*", (_s, t) => {}, () => this.targetNNList = null, () => undefined, false)
 
         
         this.$statusBar = $("div").addClass("notes-editor-status-bar");
@@ -200,7 +209,7 @@ class NotesEditor extends Z<"div"> {
 
         this.editor = editor;
         this.padding = 10;
-        this.targetTree = null;
+        this.targetNNList = null;
         this.state = NotesEditorState.select
         this.wasEditing = false;
         this.positionBasis = 0;
@@ -287,19 +296,17 @@ class NotesEditor extends Z<"div"> {
                     const {beatFraction, pointedBeats} = this
                     const startTime: TimeT = [pointedBeats, beatFraction, editor.timeDivisor];
                     const endTime: TimeT = this.noteType === NoteType.hold ? [pointedBeats + 1, 0, 1] : [...startTime]
-                    const note = new Note({
+                    
+                    const createOptions: NoteDataKPA = {
                         endTime: endTime,
                         startTime: startTime,
-                        visibleTime: 99999,
                         positionX: this.pointedPositionX,
-                        alpha: 255,
                         above: this.noteAbove ? 1 : 0,
-                        isFake: 0,
-                        size: 1.0,
-                        speed: 1.0,
-                        type: noteType,
-                        yOffset: 0
-                    });
+                        speed: this.targetNNList?.speed || undefined,
+                        type: this.noteType
+                    } as NoteDataKPA;
+                    extend(createOptions, this.defaultConfig);
+                    const note = Note.fromKPAJSON(createOptions, null); // 这里只能用visibleBeats创建，因此不需要tc
                     // this.editor.chart.getComboInfoEntity(startTime).add(note)
                     this.editor.operationList.do(new NoteAddOperation(note, this.target.getNode(note, true)));
                     break;
@@ -344,19 +351,16 @@ class NotesEditor extends Z<"div"> {
                 const {beatFraction, pointedBeats} = this
                 const startTime: TimeT = [pointedBeats, beatFraction, editor.timeDivisor];
                 const endTime: TimeT = this.noteType === NoteType.hold ? [pointedBeats + 1, 0, 1] : [...startTime]
-                const note = new Note({
+                const createOptions: NoteDataKPA = {
                     endTime: endTime,
                     startTime: startTime,
-                    visibleTime: 99999,
                     positionX: this.pointedPositionX,
-                    alpha: 255,
                     above: this.noteAbove ? 1 : 0,
-                    isFake: 0,
-                    size: 1.0,
-                    speed: 1.0,
-                    type: this.noteType,
-                    yOffset: 0
-                });
+                    speed: this.targetNNList?.speed || undefined,
+                    type: this.noteType
+                } as NoteDataKPA;
+                extend(createOptions, this.defaultConfig);
+                const note = Note.fromKPAJSON(createOptions, null); // 这里只能用visibleBeats创建，因此不需要tc
                 // this.editor.chart.getComboInfoEntity(startTime).add(note)
                 this.editor.operationList.do(new NoteAddOperation(note, this.target.getNode(note, true)));
                 this.selectedNote = note;
@@ -488,8 +492,8 @@ class NotesEditor extends Z<"div"> {
         
         if (pointedBeats)
             context.fillText(`PointedTime: ${pointedBeats}:${beatFraction}/${this.editor.timeDivisor}`, 0, -height + 70)
-        if (this.targetTree && this.targetTree.timeRanges) {
-            context.fillText("Range:" + arrayForIn(this.targetTree.timeRanges, (range) => range.join("-")).join(","), -100, -height + 50)
+        if (this.targetNNList && this.targetNNList.timeRanges) {
+            context.fillText("Range:" + arrayForIn(this.targetNNList.timeRanges, (range) => range.join("-")).join(","), -100, -height + 50)
         }
         context.restore()
 
@@ -547,8 +551,8 @@ class NotesEditor extends Z<"div"> {
         const width = canvasWidth - padding * 2;
         const height = canvasHeight - padding * 2;
         this.drawCoordination(beats);
-        if (this.targetTree) {
-            this.drawNNList(this.targetTree, beats)
+        if (this.targetNNList) {
+            this.drawNNList(this.targetNNList, beats)
         } else {
             // Hold first, so that drag/flicks can be seen
             for (const lists of [this.target.hnLists, this.target.nnLists]) {
@@ -558,15 +562,15 @@ class NotesEditor extends Z<"div"> {
             }
         }
         // 绘制侧边音符节点标识
-        if (DRAWS_NN && this.targetTree) {
+        if (DRAWS_NN && this.targetNNList) {
             context.save()
             context.lineWidth = 3;
-            const jump = this.targetTree.jump;
+            const jump = this.targetNNList.jump;
             const averageBeats = jump.averageBeats;
             const start = Math.floor(beats / averageBeats)
             const end = Math.ceil((beats + timeRange) / averageBeats)
             const array = jump.array;
-            const array2 = this.targetTree instanceof HNList ? this.targetTree.holdTailJump.array : null;
+            const array2 = this.targetNNList instanceof HNList ? this.targetNNList.holdTailJump.array : null;
             let lastNode = null;
             let color = COLOR_1;
             const minorAverageBeats = jump.averageBeats / MINOR_PARTS;
@@ -574,7 +578,7 @@ class NotesEditor extends Z<"div"> {
             const x2 = -width / 2 + 10;
             const switchColor = () => (context.strokeStyle = color = color === COLOR_1 ? COLOR_2 : COLOR_1)
             for (let i = start; i < end; i++) {
-                const scale: TypeOrTailer<NoteNode> | TypeOrTailer<NoteNode>[] = array[i]
+                const scale = array[i] as NNOrTail | NNOrTail[];
                 if (!scale) {
                     continue;
                 }
@@ -600,7 +604,7 @@ class NotesEditor extends Z<"div"> {
                 }
             }
             if (array2) for (let i = start; i < end; i++) {
-                const scale: TypeOrTailer<NoteNode> | TypeOrTailer<NoteNode>[] = array2[i]
+                const scale = array2[i] as NNOrTail | NNOrTail[];
                 if (!scale) {
                     continue;
                 }

@@ -191,3 +191,11 @@ function getPercentile(sorted: number[], percentile: number): number {
 }
 
 const isAllDigits = (str: string) => /^\d+$/.test(str);
+
+const extend = <T>(target: Partial<T>, source: Partial<T>): void => {
+    Object.keys(source).forEach(key => {
+        if (source[key] !== undefined) {
+            target[key] = source[key];
+        }
+    });
+}
