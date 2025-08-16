@@ -35,10 +35,6 @@ abstract class SideEntityEditor<T extends object> extends SideEditor {
 
 
 class NoteEditor extends SideEntityEditor<Note> {
-    aboveOption: BoxOption = new BoxOption("above", () => this.target.above = true);
-    belowOption: BoxOption = new BoxOption("below", () => this.target.above = false);
-    realOption: BoxOption = new BoxOption("true", () => this.target.isFake = false);
-    fakeOption: BoxOption = new BoxOption("fake", () => this.target.isFake = true);
     noteTypeOptions: BoxOption[] = ["tap", "hold", "flick", "drag"]
         .map((v) => new BoxOption(v, () => {
             editor.operationList.do(new NoteTypeChangeOperation(this.target, NoteType[v]))
@@ -48,9 +44,9 @@ class NoteEditor extends SideEntityEditor<Note> {
     $endTime       = new ZFractionInput();;
     $type          = new ZDropdownOptionBox(this.noteTypeOptions);
     $position      = new ZInputBox();;
-    $dir           = new ZDropdownOptionBox([this.aboveOption, this.belowOption]);
+    $dir           = new ZSwitch("above", "below"); // 不用RPE的那种下拉框形式，少一个操作
     $speed         = new ZInputBox();
-    $fake          = new ZDropdownOptionBox([this.fakeOption, this.realOption]);
+    $real          = new ZSwitch("fake", "real");
     $alpha         = new ZInputBox();
     $size          = new ZInputBox();
     $yOffset       = new ZInputBox();
@@ -70,7 +66,7 @@ class NoteEditor extends SideEntityEditor<Note> {
             $("span").text("type"), this.$type,
             $("span").text("pos"), this.$position,
             $("span").text("dir"), this.$dir,
-            $("span").text("real"), this.$fake,
+            $("span").text("real"), this.$real,
             $("span").text("alpha"), this.$alpha,
             $("span").text("size"), this.$size,
             $("span").text("AbsYOffset"), this.$yOffset,
@@ -88,6 +84,12 @@ class NoteEditor extends SideEntityEditor<Note> {
         })
         this.$endTime.onChange((t) => {
             editor.operationList.do(new HoldEndTimeChangeOperation(this.target, t));
+        })
+        this.$dir.whenClickChange((checked) => {
+            editor.operationList.do(new NoteValueChangeOperation(this.target, "above", checked));
+        })
+        this.$real.whenClickChange((checked) => {
+            editor.operationList.do(new NoteValueChangeOperation(this.target, "isFake", !checked));
         })
         // 这里缺保卫函数
         this.$position.whenValueChange(() => {
@@ -151,8 +153,8 @@ class NoteEditor extends SideEntityEditor<Note> {
         }
         this.$type.value = this.noteTypeOptions[note.type - 1];
         this.$position.setValue(note.positionX + "")
-        this.$dir.value = note.above ? this.aboveOption : this.belowOption
-        this.$fake.value = note.isFake ? this.fakeOption : this.realOption
+        this.$dir.checked = note.above;
+        this.$real.checked = !note.isFake;
         this.$speed.setValue(note.speed + "")
         this.$alpha.setValue(note.alpha + "")
         this.$yOffset.setValue(note.yOffset + "")

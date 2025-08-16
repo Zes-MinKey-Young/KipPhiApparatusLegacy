@@ -743,7 +743,7 @@ class EventCurveEditor {
         context.fillText("State: " + EventCurveEditorState[this.state], 10, -30)
         context.fillText("Beats: " + shortenFloat(beats, 4).toString(), 10, -10)
         context.fillText("Sequence: " + this.target.id, 10, -50)
-        context.fillText(`Last Frame Took: ${shortenFloat(editor.renderingTime, 2) || 'N/A'}ms, fps: ${Math.round(1000 / editor.renderingTime)}`, 10, -70);
+        context.fillText(`fps: ${shortenFloat(editor.frameRate, 2)}`, 10, -70);
         if (this.pointedBeats) {
             context.fillText(`pointedTime: ${this.pointedBeats}:${this.beatFraction}:${editor.timeDivisor}`, 10, 10);
         }
@@ -754,7 +754,7 @@ class EventCurveEditor {
         context.restore()
         const startBeats = beats - this.timeSpan / 2;
         const endBeats = beats + this.timeSpan / 2;
-        let previousEndNode: EventEndNode | Header<EventStartNode> = this.target.getNodeAt(startBeats < 0 ? 0 : startBeats).previous || this.target.head; // 有点奇怪的操作
+        let previousEndNode: EventEndNode | EventNodeLike<NodeType.HEAD> = this.target.getNodeAt(startBeats < 0 ? 0 : startBeats).previous || this.target.head; // 有点奇怪的操作
         let previousTime = previousEndNode.type === NodeType.HEAD ? 0: TimeCalculator.toBeats(previousEndNode.time);
         // 该数组用于自动调整网格
         const valueArray = [];

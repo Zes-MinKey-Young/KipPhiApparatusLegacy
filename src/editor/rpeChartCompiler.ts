@@ -110,10 +110,10 @@ class RPEChartCompiler {
      */
     nnListToArray(nnList: NNList) {
         const notes: NoteDataRPE[] = [];
-        let node: TypeOrHeader<NoteNode> = nnList.tail.previous;
-        while (!(node.type === NodeType.HEAD)) {
+        let node: NNOrHead = nnList.tail.previous;
+        while (node.type !== NodeType.HEAD) {
             for (let each of node.notes) {
-                notes.push(each.dumpRPE());
+                notes.push(each.dumpRPE(this.chart.timeCalculator));
             }
             node = node.previous;
         }
@@ -136,7 +136,7 @@ class RPEChartCompiler {
         let currentNode: EventStartNode = seq.head.next;
         const newSeq = new EventNodeSequence(seq.type, seq.effectiveBeats);
         map.set(seq, newSeq);
-        let currentPos: Header<EventStartNode> | EventEndNode = newSeq.head;
+        let currentPos: EventNodeLike<NodeType.HEAD> | EventEndNode = newSeq.head;
         while (true) {
             if (!currentNode || (currentNode.next.type === NodeType.TAIL)) {
                 break;

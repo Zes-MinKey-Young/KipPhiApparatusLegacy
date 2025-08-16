@@ -127,7 +127,7 @@ class ComplexOperation<T extends Operation[]> extends Operation {
 
 type NoteValueFieldPhiZone = "judgeSize" | "tint" | "tintHitEffects";
 
-type NoteValueField = "speed" | "type" | "positionX" | "startTime" | "endTime" | "alpha" | "size" | "visibleBeats" | "yOffset" | NoteValueFieldPhiZone;
+type NoteValueField = "speed" | "type" | "positionX" | "startTime" | "endTime" | "alpha" | "size" | "visibleBeats" | "yOffset" | "above" | "isFake" | NoteValueFieldPhiZone;
 
 class NoteValueChangeOperation<T extends NoteValueField> extends Operation {
     field: T;

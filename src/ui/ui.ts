@@ -193,11 +193,12 @@ class ZSwitch extends ZButton {
             this.dispatchEvent(new ZValueChangeEvent())
         }
     }
-    constructor(text: string) {
-        super(text)
+    constructor(public innnerText: string, public checkedText?: string) {
+        super(innnerText)
         this.addClass("switch")
         this.onClick(() => {
             this.checked = !this.checked;
+            this.text(this.checked ? checkedText || innnerText : innnerText)
             this.dispatchEvent(new Event("clickChange"))
         })
     }

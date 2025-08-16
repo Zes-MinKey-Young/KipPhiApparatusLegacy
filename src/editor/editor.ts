@@ -373,8 +373,9 @@ class Editor extends EventTarget {
     multiNoteEditor: MultiNoteEditor;
     multiNodeEditor: MultiNodeEditor;
 
-    renderingTime: number;
-    lastRenderingTime: number;
+    lastMs: number;
+    framesSinceLastUpdate: number = 0;
+    frameRate: number = 0;
     $saveDialog: SaveDialog;
 
 
@@ -717,8 +718,13 @@ class Editor extends EventTarget {
             this.updateNotesEditor()
             this.updateShownEditor()
             const now = performance.now();
-            this.renderingTime = this.lastRenderingTime ? (now - this.lastRenderingTime) : 0;
-            this.lastRenderingTime = now;
+            if (now - this.lastMs > 1000) {
+                this.frameRate = (this.framesSinceLastUpdate + 1) / (now - this.lastMs) * 1000;
+                this.lastMs = now;
+                this.framesSinceLastUpdate = 0;
+            } else {
+                this.framesSinceLastUpdate++;
+            }
             console.log("updated")
         })
     }
@@ -739,6 +745,8 @@ class Editor extends EventTarget {
             return;
         }
         this.playButton.innerHTML = "暂停"
+        this.lastMs = performance.now();
+        this.framesSinceLastUpdate = 0;
         this.player.play()
         this.update()
     }
