@@ -528,9 +528,9 @@ class HNList extends NNList {
     }
 }
 
-type NNNOrHead = NNNodeLike<NodeType.MIDDLE> | NNNodeLike<NodeType.HEAD>;
-type NNNOrTail = NNNodeLike<NodeType.MIDDLE> | NNNodeLike<NodeType.TAIL>;
-type AnyNNN = NNNodeLike<NodeType.MIDDLE> | NNNodeLike<NodeType.HEAD> | NNNodeLike<NodeType.TAIL>;
+type NNNOrHead = NNNode | NNNodeLike<NodeType.HEAD>;
+type NNNOrTail = NNNode | NNNodeLike<NodeType.TAIL>;
+type AnyNNN = NNNode | NNNodeLike<NodeType.HEAD> | NNNodeLike<NodeType.TAIL>;
 
 class NNNodeLike<T extends NodeType> {
     previous: NNNOrHead;

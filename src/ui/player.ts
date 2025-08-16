@@ -325,14 +325,14 @@ class Player {
             return;
         }
         const beats = this.beats;
-        const lastNNN: TypeOrTailer<NNNode> = this.lastUnplayedNNNode;
+        const lastNNN: NNNOrTail = this.lastUnplayedNNNode;
         const startingFrom = lastNNN.type === NodeType.TAIL ? Infinity : TimeCalculator.toBeats(lastNNN.startTime);
         if (startingFrom >= beats) {
             this.lastUnplayedNNNode = this.chart.nnnList.getNodeAt(beats)
             return;
         }
-        let node: TypeOrTailer<NNNode> = lastNNN;
-        for (; !(node.type === NodeType.TAIL) && TimeCalculator.toBeats(node.startTime) < beats; node = node.next) {
+        let node: NNNOrTail = lastNNN;
+        for (; node.type !== NodeType.TAIL && TimeCalculator.toBeats(node.startTime) < beats; node = node.next) {
             const nns = node.noteNodes;
             const hns = node.holdNodes;
             const nnl = nns.length;
@@ -574,8 +574,8 @@ class Player {
         this.update();
     }
     pause() {
-        this.playing = false;
         this.audio.pause()
+        this.playing = false
     }
     receive(chart: Chart) {
         this.chart = chart;
