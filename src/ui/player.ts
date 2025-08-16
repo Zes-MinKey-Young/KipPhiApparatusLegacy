@@ -195,7 +195,7 @@ class Player {
         // const hexAlpha = alpha < 0 ? "00" : (alpha > 255 ? "FF" : alpha.toString(16))
         const lineColor = settings.get("lineColor")
         context.strokeStyle = rgba(...(this.greenLine === judgeLine.id ? ([100, 255, 100] as RGB) : lineColor), alpha / 255)
-        drawLine(context, -1350, 0, 1350, 0)
+        drawLine(context, -2025, 0, 2025, 0) // Fixes #1
         context.drawImage(ANCHOR, -10, -10)
 
         /** 判定线的法向量 */
