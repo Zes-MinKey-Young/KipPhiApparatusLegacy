@@ -41,6 +41,8 @@ class JudgeLinesEditor extends Z<"div"> {
         }
         this._selectedLine = line;
         this.editor.notesEditor.target = line;
+        if (this.editor.judgeLineInfoEditor)
+            this.editor.judgeLineInfoEditor.target = line;
         this.editor.eventCurveEditors.changeTarget(line)
         const editr = this.editors.get(line);
         editr.addClass("judge-line-editor-selected")
@@ -172,27 +174,7 @@ class JudgeLineEditor extends Z<"div"> {
             .addClass("judgeline-info-name")
             .setValue(judgeLine.name)
             .whenValueChange((s) => {
-                let m = s.match(/^\.(father|group)\s+?\=\s+?(.+)$/);
-                if (m) {
-                    let [_, type, name] = m;
-                    if (type == "father") {
-                        if (!name.match(/^[0-9]+$/)) {
-                            return false;
-                        }
-                        const id = parseInt(name);
-                        const lines = editor.chart.judgeLines;
-                        if (id >= lines.length) {
-                            return false;
-                        }
-
-                        judgeLine.father = lines[id];
-                    } else if (type == "group") {
-                        const mayBeGroup = editor.chart.judgeLineGroups.find(group => group.name === name);
-                        mayBeGroup.add(judgeLine);
-                    }
-                    return false;
-                }
-                judgeLine.name = s
+                editor.operationList.do(new JudgeLinePropChangeOperation(this.judgeLine, "name", s))
             });
         this.$xSpan = $("span");
         this.$ySpan = $("span");

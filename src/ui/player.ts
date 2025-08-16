@@ -177,16 +177,16 @@ class Player {
         // console.log(x, y, theta, alpha);
         // console.time("calculate coordinate");
         const {x: transformedX, y: transformedY} = new Coordinate(x, y).mul(matrix);
-        const MyMatrix = identity.translate(transformedX, transformedY).rotate(-theta).scale(1, -1);
+        const myMatrix = judgeLine.rotatesWithFather ? matrix.translate(x, y).rotate(-theta) : identity.translate(transformedX, transformedY).rotate(-theta).scale(1, -1);
         // console.timeEnd("calculate coordinate");
         // console.time("transform");
-        context.setTransform(MyMatrix);
+        context.setTransform(myMatrix);
         // console.timeEnd("transform");
 
         if (judgeLine.children.size !== 0) {
             for (let line of judgeLine.children) {
                 context.save();
-                this.renderLine(MyMatrix, line);
+                this.renderLine(myMatrix, line);
                 context.restore();
             }
         }
@@ -281,9 +281,9 @@ class Player {
                 // 打击特效
                 if (beats > 0) {
                     if (list instanceof HNList) {
-                        this.renderHoldHitEffects(MyMatrix, list, beats, hitRenderLimit, beats, timeCalculator)
+                        this.renderHoldHitEffects(myMatrix, list, beats, hitRenderLimit, beats, timeCalculator)
                     } else {
-                        this.renderHitEffects(MyMatrix, list, hitRenderLimit, beats, timeCalculator)
+                        this.renderHitEffects(myMatrix, list, hitRenderLimit, beats, timeCalculator)
                     }
                 }
                 // console.timeEnd("Rendering hit effects");

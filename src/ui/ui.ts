@@ -1,11 +1,25 @@
 
 
 
+
 type CSSStyleName = Exclude<keyof CSSStyleDeclaration, "length"
     | "parentRule" | "item" | "getPropertyValue" 
     | "getPropertyPriority" | "setProperty" | "removeProperty">
 
 type HTMLElementTagName = keyof HTMLElementTagNameMap
+
+
+
+/*
+when和on开头的方法都可以绑定监听器
+
+when的监听器绑定的是Z本身的事件
+
+on的绑定的是Z所含的DOM元素事件
+
+*/
+
+
 
 /**
  * Z is just like jQuery, but it's much simpler.
@@ -189,16 +203,17 @@ class ZSwitch extends ZButton {
     set checked(val) {
         if (val !== this.checked) {
             this.element.classList.toggle("checked", val)
+            this.text(val ? this.checkedText || this.innerText : this.innerText)
             console.log("switch checked:", val, this.checked)
             this.dispatchEvent(new ZValueChangeEvent())
         }
     }
-    constructor(public innnerText: string, public checkedText?: string) {
-        super(innnerText)
+    constructor(public innerText: string, public checkedText?: string) {
+        super(innerText)
         this.addClass("switch")
         this.onClick(() => {
             this.checked = !this.checked;
-            this.text(this.checked ? checkedText || innnerText : innnerText)
+            this.text(this.checked ? checkedText || innerText : innerText)
             this.dispatchEvent(new Event("clickChange"))
         })
     }

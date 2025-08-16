@@ -43,8 +43,8 @@ class NoteEditor extends SideEntityEditor<Note> {
     $time          = new ZFractionInput();;
     $endTime       = new ZFractionInput();;
     $type          = new ZDropdownOptionBox(this.noteTypeOptions);
-    $position      = new ZInputBox();;
-    $dir           = new ZSwitch("above", "below"); // 不用RPE的那种下拉框形式，少一个操作
+    $position      = new ZInputBox();
+    $dir           = new ZSwitch("below", "above"); // 不用RPE的那种下拉框形式，少一个操作
     $speed         = new ZInputBox();
     $real          = new ZSwitch("fake", "real");
     $alpha         = new ZInputBox();
@@ -355,18 +355,20 @@ class EventEditor extends SideEntityEditor<EventStartNode | EventEndNode> {
 }
 
 class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
-    readonly $father      = new ZInputBox("-1");
-    readonly $group       = new ZDropdownOptionBox([new BoxOption("Default")]);
-    readonly $newGroup    = new ZInputBox("");
-    readonly $createGroup = new ZButton("Create");
-    readonly $createLine  = new ZButton("Create");
-    readonly $del         = new ZButton("Delete").addClass("destructive");
+    readonly $father            = new ZInputBox("-1");
+    readonly $group             = new ZDropdownOptionBox([new BoxOption("Default")]);
+    readonly $newGroup          = new ZInputBox("");
+    readonly $createGroup       = new ZButton("Create");
+    readonly $createLine        = new ZButton("Create");
+    readonly $rotatesWithFather = new ZSwitch("no", "yes");
+    readonly $del               = new ZButton("Delete").addClass("destructive");
     constructor() {
         super();
         this.$title.text("Judge Line");
         this.$body.append(
             $("span").text("Father"), this.$father,
             $("span").text("Group"), this.$group,
+            $("span").text("Rotates with father"), this.$rotatesWithFather,
             $("span").text("New Group"), $("div").append(this.$newGroup, this.$createGroup),
             $("span").text("New Line"), this.$createLine,
             $("span").text("del"), this.$del
@@ -423,7 +425,10 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
             const line = new JudgeLine(editor.chart);
             editor.operationList.do(new JudgeLineCreateOperation(editor.chart, line));
             this.target = line;
-        })
+        });
+        this.$rotatesWithFather.whenClickChange((checked) => {
+            editor.operationList.do(new JudgeLinePropChangeOperation(this.target, "rotatesWithFather", checked))
+        });
         this.$del.onClick(() => {
             if (!this.target) {
                 notify("GC了")
@@ -438,6 +443,7 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
             return;
         }
         this.$father.setValue(judgeLine.father ? judgeLine.father.id + "" : "-1");
+        this.$rotatesWithFather.checked = judgeLine.rotatesWithFather;
         this.updateGroups(editor.chart.judgeLineGroups);
     }
     updateGroups(groups: JudgeLineGroup[]) {

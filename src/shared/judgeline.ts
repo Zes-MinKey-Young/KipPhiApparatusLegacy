@@ -25,6 +25,8 @@ class JudgeLine {
     rotate: number;
     alpha: number;
 
+    rotatesWithFather: boolean = false;
+
     id: number;
     name: string = "Untitled";
     readonly chart: Chart;
@@ -41,6 +43,7 @@ class JudgeLine {
         line.name = data.Name;
         chart.judgeLineGroups[data.Group].add(line);
         line.cover = Boolean(data.isCover);
+        line.rotatesWithFather = data.rotate_with_father;
 
         const noteNodeTree = chart.nnnList;
         if (data.notes) {
@@ -117,6 +120,7 @@ class JudgeLine {
         let line = new JudgeLine(chart)
         line.id = id;
         line.name = data.Name;
+        line.rotatesWithFather = data.rotatesWithFather;
         chart.judgeLineGroups[data.group].add(line);
         const nnnList = chart.nnnList;
         for (let isHold of [false, true]) {

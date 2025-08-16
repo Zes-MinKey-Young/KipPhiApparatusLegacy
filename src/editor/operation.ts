@@ -9,7 +9,7 @@ class NeedsReflowEvent extends Event {
 class OperationList extends EventTarget {
     operations: Operation[];
     undoneOperations: Operation[];
-    constructor(public parentChart: Chart) {
+    constructor(public chart: Chart) {
         super()
         this.operations = [];
         this.undoneOperations = [];
@@ -17,8 +17,8 @@ class OperationList extends EventTarget {
     undo() {
         const op = this.operations.pop()
         if (op) {
-            if (!this.parentChart.modified){
-                this.parentChart.modified = true;
+            if (!this.chart.modified){
+                this.chart.modified = true;
                 this.dispatchEvent(new Event("firstmodified"))
             }
             this.undoneOperations.push(op)
@@ -33,8 +33,8 @@ class OperationList extends EventTarget {
     redo() {
         const op = this.undoneOperations.pop()
         if (op) {
-            if (!this.parentChart.modified){
-                this.parentChart.modified = true;
+            if (!this.chart.modified){
+                this.chart.modified = true;
                 this.dispatchEvent(new Event("firstmodified"))
             }
             this.operations.push(op)
@@ -53,8 +53,8 @@ class OperationList extends EventTarget {
         if (operation.ineffective) {
             return
         }
-        if (!this.parentChart.modified){
-            this.parentChart.modified = true;
+        if (!this.chart.modified){
+            this.chart.modified = true;
             this.dispatchEvent(new Event("firstmodified"))
         }
         if (this.operations.length !== 0) {
@@ -786,6 +786,23 @@ class JudgeLineRenameOperation extends Operation {
     }
     undo() {
         this.judgeLine.name = this.originalValue;
+    }
+}
+
+type JudgeLineValueField = "name" | "rotatesWithFather";
+
+class JudgeLinePropChangeOperation<T extends JudgeLineValueField> extends Operation {
+    updatesEditor = true;
+    originalValue: JudgeLine[T];
+    constructor(public judgeLine: JudgeLine, public field: T, public value: JudgeLine[T]) {
+        super();
+        this.originalValue = judgeLine[field];
+    }
+    do() {
+        this.judgeLine[this.field] = this.value;
+    }
+    undo() {
+        this.judgeLine[this.field] = this.originalValue;
     }
 }
 

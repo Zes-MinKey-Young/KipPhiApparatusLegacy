@@ -200,6 +200,8 @@ interface JudgeLineDataRPE {
 
     /** 背景是否为GIF */
     isGif: Bool;
+
+    rotate_with_father?: boolean;
     attachUI?: "pause" | "combonumber" | "combo" | "score" | "bar" | "name" | "level";
 
     /** Decides how scaleX events affect notes. Defaults to 0.
@@ -264,6 +266,7 @@ interface JudgeLineDataKPA {
     // bpmfactor: 1.0;
     eventLayers: EventLayerDataKPA[];
     children: JudgeLineDataKPA[];
+    rotatesWithFather: boolean;
     // extended: {inclineEvents: EventDataRPE[]};
     // father: number;
     // children: number[];
