@@ -740,10 +740,12 @@ class EventCurveEditor {
         this.drawCoordination(beats)
         context.save()
         context.fillStyle = "#EEE"
+        context.font = "16px phigros"
         context.fillText("State: " + EventCurveEditorState[this.state], 10, -30)
         context.fillText("Beats: " + shortenFloat(beats, 4).toString(), 10, -10)
         context.fillText("Sequence: " + this.target.id, 10, -50)
         context.fillText(`fps: ${shortenFloat(editor.frameRate, 2)}`, 10, -70);
+        context.fillText(`Time: ${shortenFloat(editor.player.time, 4)}s`, 10, 40)
         if (this.pointedBeats) {
             context.fillText(`pointedTime: ${this.pointedBeats}:${this.beatFraction}:${editor.timeDivisor}`, 10, 10);
         }
