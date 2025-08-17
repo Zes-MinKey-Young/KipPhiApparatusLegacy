@@ -431,7 +431,7 @@ class Editor extends EventTarget {
         this.timeDivisor = 4
         // PlaybackRate
         this.$playbackRate = new ZDropdownOptionBox(["1.0x", "1.5x", "2.0x", "0.5x", "0.25x", "0.75x"].map((n) => new BoxOption(n)))
-            .onChange((rateStr: string) => {
+            .whenValueChange((rateStr: string) => {
                 this.player.audio.playbackRate = parseFloat(rateStr)
             })
         // Save Button

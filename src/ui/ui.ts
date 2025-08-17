@@ -201,10 +201,10 @@ class ZSwitch extends ZButton {
         return this.element.classList.contains("checked")
     }
     set checked(val) {
+        val = !!val;
         if (val !== this.checked) {
             this.element.classList.toggle("checked", val)
             this.text(val ? this.checkedText || this.innerText : this.innerText)
-            console.log("switch checked:", val, this.checked)
             this.dispatchEvent(new ZValueChangeEvent())
         }
     }
@@ -213,7 +213,6 @@ class ZSwitch extends ZButton {
         this.addClass("switch")
         this.onClick(() => {
             this.checked = !this.checked;
-            this.text(this.checked ? checkedText || innerText : innerText)
             this.dispatchEvent(new Event("clickChange"))
         })
     }
@@ -421,7 +420,6 @@ class EditableBoxOption extends BoxOption {
 
 
 class ZDropdownOptionBox extends Z<"div"> {
-    callbacks: ((val: string) => any)[]
     readonly options: BoxOption[];
     _value: BoxOption;
     $optionList: Z<"div">
@@ -435,7 +433,6 @@ class ZDropdownOptionBox extends Z<"div"> {
     $value: Z<"div">
     constructor(options: BoxOption[], up: boolean=false) {
         super("div")
-        this.callbacks = [];
         this.addClass("dropdown-option-box")
         if (up) {
             this.addClass("up")
@@ -466,7 +463,7 @@ class ZDropdownOptionBox extends Z<"div"> {
                     this.value.onChanged && this.value.onChanged(this.value);
                     option.onChangedTo && option.onChangedTo(option)
                     this.value = option
-                    this.callbacks.forEach(f => f(option.text))
+                    this.dispatchEvent(new ZValueChangeEvent())
                 }
             }
         })
@@ -488,8 +485,10 @@ class ZDropdownOptionBox extends Z<"div"> {
         }
     }
     
-    onChange(callback: (val: string) => any) {
-        this.callbacks.push(callback);
+    whenValueChange(callback: (val: string) => any) {
+        this.addEventListener("valueChange", () => {
+            callback(this.value.text);
+        })
         return this;
     }
     appendOption(option: BoxOption): this {
@@ -510,10 +509,9 @@ class ZDropdownOptionBox extends Z<"div"> {
 
 class ZEditableDropdownOptionBox extends Z<"div"> {
     $optionList: Z<"div">
-    callbacks: ((val: string) => any)[]
     readonly options: EditableBoxOption[];
     _value: EditableBoxOption;
-    get value() {
+    get value(): EditableBoxOption | undefined {
         return this._value;
     }
     set value(option) {
@@ -528,14 +526,13 @@ class ZEditableDropdownOptionBox extends Z<"div"> {
      */
     constructor(options: EditableBoxOption[], up: boolean=false) {
         super("div")
-        this.callbacks = [];
         this.addClass("dropdown-option-box")
         if (up) {
             this.addClass("up")
         }
         this.$value = new ZInputBox()
         this.$value.onInput(() => {
-            this.value.edit(this.$value.getValue())
+            this.value?.edit(this.$value.getValue())
         })
         this.$value.css("width", "100%")
         const span = $("span");
@@ -552,7 +549,7 @@ class ZEditableDropdownOptionBox extends Z<"div"> {
         optionList.onClick((event) => {
             const target = event.target
             if (target instanceof HTMLDivElement) {
-                if (target !== this.value.getElement(this).release()) {
+                if (target !== this.value?.getElement(this).release()) {
                     let option: EditableBoxOption;
                     for (let i =0; i < options.length; i++) {
                         option = options[i]
@@ -563,11 +560,12 @@ class ZEditableDropdownOptionBox extends Z<"div"> {
                     this.value.onChanged && this.value.onChanged(this.value);
                     option.onChangedTo && option.onChangedTo(option)
                     this.value = option
-                    this.callbacks.forEach(f => f(option.text))
+                    this.dispatchEvent(new ZValueChangeEvent())
                 }
             }
         })
-        this.value = options[0];
+        if (options.length > 0)
+            this.value = options[0];
     }
     _disabled: boolean;
     get disabled() {
@@ -585,8 +583,10 @@ class ZEditableDropdownOptionBox extends Z<"div"> {
         }
     }
     
-    onChange(callback: (val: string) => any) {
-        this.callbacks.push(callback);
+    whenValueChange(callback: (val: string) => any) {
+        this.addEventListener("valueChange", () => {
+            callback(this.value.text);
+        })
         return this;
     }
     appendOption(option: EditableBoxOption): this {
@@ -605,18 +605,65 @@ class ZEditableDropdownOptionBox extends Z<"div"> {
     }
 }
 
-class ZMemorableBox extends ZEditableDropdownOptionBox {
-    constructor(options: string[], up: boolean=false) {
-        super([], up)
-        for (let i = 0; i < options.length; i++) {
-            this.appendString(options[i])
+
+class ZSearchBox extends Z<"div"> {
+    count = 5
+    readonly $value = new ZInputBox("");
+    readonly $options = $("div").addClass("dropdown-option-list")
+
+    constructor(searchable: (s: string) => string[], up: boolean=false) {
+        super("div");
+        this.addClass("search-box");
+        this.append($("span").append(this.$options));
+        this.append(this.$value);
+        this.$value.onInput(() => {
+            const optionStrings = searchable(this.$value.getValue());
+            this.replaceWithOptions(optionStrings.slice(0, 5));
+        });
+    }
+    replaceWithOptions(strings: string[]) {
+        this.$options.html("");
+        this.$options.appendMass(() => {
+            for (const string of strings) {
+                this.$options.append($("div").addClass("box-option").text(string));
+            }
+        });
+    }
+    get value() {
+        return this.$value.getValue();
+    }
+    whenValueChange(callback: (value: string, e: Event) => void) {
+        this.$value.whenValueChange(callback)
+    }
+    private _disabled = false;
+    get disabled() {
+        return this._disabled;
+    }
+    set disabled(disabled: boolean) {
+        if (this._disabled === disabled) {
+            return;
         }
+        this._disabled = disabled;
+        this.$value.disabled = disabled;
     }
-    constructOption(str: string) {
-        return new EditableBoxOption(str, (o, text) => {this.appendString(text)}, (_) => undefined, (_) => undefined, false)
-    }
-    appendString(str: string) {
-        this.appendOption(this.constructOption(str))
+}
+class ZMemorableBox extends ZSearchBox {
+    history: string[] = [];
+    maxHistory = 10;
+    constructor(options: string[], up: boolean=false) {
+        super(
+            (prefix) => this.history.filter(
+                (s) => s.startsWith(prefix)
+            ),
+            up
+        )
+        this.history = [...options];
+        this.whenValueChange(() => {
+            this.history.unshift(this.value);
+            if (this.history.length > this.maxHistory) {
+                this.history.pop();
+            }
+        })
     }
 }
 
@@ -661,8 +708,8 @@ class ZEasingBox extends Z<"div"> {
                 this.value = num;
                 this.dispatchEvent(new ZValueChangeEvent())
             });
-        this.$easeType = new ZDropdownOptionBox(EasingOptions.easeTypeOptions, dropdownUp).onChange(() => this.update())
-        this.$funcType = new ZDropdownOptionBox(EasingOptions.funcTypeOptions, dropdownUp).onChange(() => this.update())
+        this.$easeType = new ZDropdownOptionBox(EasingOptions.easeTypeOptions, dropdownUp).whenValueChange(() => this.update())
+        this.$funcType = new ZDropdownOptionBox(EasingOptions.funcTypeOptions, dropdownUp).whenValueChange(() => this.update())
 
         this.addClass("flex-row")
             .append(

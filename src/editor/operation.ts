@@ -868,3 +868,17 @@ class JudgeLineDeleteOperation extends Operation {
         this.originalGroup.add(this.judgeLine);
     }
 }
+
+class JudgeLineENSChangeOperation extends Operation {
+    originalValue: EventNodeSequence;
+    constructor(public judgeLine: JudgeLine, public layerId: number, public typeStr: BasicEventName, public value: EventNodeSequence) {
+        super();
+        this.originalValue = judgeLine.eventLayers[layerId][typeStr];
+    }
+    do() {
+        this.judgeLine.eventLayers[this.layerId][this.typeStr] = this.value;
+    }
+    undo() {
+        this.judgeLine.eventLayers[this.layerId][this.typeStr] = this.originalValue;
+    }
+}

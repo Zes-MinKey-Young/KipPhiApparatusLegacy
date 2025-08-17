@@ -82,10 +82,10 @@ class EventCurveEditors extends Z<"div"> {
         super("div")
         this.addClass("event-curve-editors")
 
-        this.$typeSelect.onChange((val) => {
+        this.$typeSelect.whenValueChange((val) => {
             this.selectedEditor = this[val];
         })
-        this.$layerSelect.onChange((val) => {
+        this.$layerSelect.whenValueChange((val) => {
             if (!(["0", "1", "2", "3", "ex"]).includes(val)) {
                 throw new Error("Invalid layer");
             }
@@ -116,7 +116,7 @@ class EventCurveEditors extends Z<"div"> {
             "Start",
             "End"
         ].map((s) => new BoxOption(s)), true)
-            .onChange((val) => {
+            .whenValueChange((val) => {
                 for (let type of ["moveX", "moveY", "alpha", "rotate", "speed", "easing", "bpm"] as const) {
                     this[type].newNodeState = NewNodeState["controls" + val];
                 }
@@ -475,7 +475,7 @@ class EventCurveEditor {
             this.draw()
         })
 
-        parent.$selectOption.onChange((v: string) => {
+        parent.$selectOption.whenValueChange((v: string) => {
             this.selectState = SelectState[v];
             if (this.selectState === SelectState.none) {
                 this.state = EventCurveEditorState.select;

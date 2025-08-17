@@ -362,6 +362,15 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
     readonly $createLine        = new ZButton("Create");
     readonly $rotatesWithFather = new ZSwitch("no", "yes");
     readonly $del               = new ZButton("Delete").addClass("destructive");
+
+    readonly $eventLayerIdInput = new ZArrowInputBox().setValue(0);
+    readonly $eventType         = new ZDropdownOptionBox(["moveX", "moveY", "rotate", "alpha", "speed"].map(
+        name => new BoxOption(name)
+    ))
+    readonly $eventNodeSequence = $("div").addClass("flex-row").append(this.$eventLayerIdInput, this.$eventType)
+    readonly $newEventSeqName   = new ZSearchBox((prefix: string) => 
+        [...editor.chart.sequenceMap.keys()].filter(name => name.startsWith(prefix))
+    )
     constructor() {
         super();
         this.$title.text("Judge Line");
@@ -371,7 +380,8 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
             $("span").text("Rotates with father"), this.$rotatesWithFather,
             $("span").text("New Group"), $("div").append(this.$newGroup, this.$createGroup),
             $("span").text("New Line"), this.$createLine,
-            $("span").text("del"), this.$del
+            $("span").text("del"), this.$del,
+            this.$eventNodeSequence, this.$newEventSeqName
         );
         this.$father.whenValueChange((content) => {
             if (!this.target) {
@@ -435,7 +445,25 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
                 return;
             }
             editor.operationList.do(new JudgeLineDeleteOperation(editor.chart, this.target));
-        })
+        });
+        this.$newEventSeqName.whenValueChange((name) => {
+            const layer: number = this.$eventLayerIdInput.getValue();
+            const typeStr  = this.$eventType.value.text as BasicEventName;
+            const type = EventType[typeStr];
+            if (layer < 0 || layer > 3) {
+                notify("Layer index out of range. Range is [0, 3]");
+                return;
+            }
+            const ens = editor.chart.sequenceMap.get(name);
+            if (!ens) {
+                notify("No such sequence!");
+            }
+            if (ens.type !== type) {
+                notify("The sequence types did not match!");
+                return;
+            }
+            editor.operationList.do(new JudgeLineENSChangeOperation(this.target, layer, typeStr, ens));
+        });
     }
     update(): void {
         const judgeLine = this.target;

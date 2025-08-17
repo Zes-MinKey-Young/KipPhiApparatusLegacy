@@ -16,6 +16,8 @@ enum NoteType {
     hold=2
 }
 
+type BasicEventName = "moveX" | "moveY" | "rotate" | "alpha" | "speed"
+
 interface EventLayer {
     moveX?: EventNodeSequence;
     moveY?: EventNodeSequence;

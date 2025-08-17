@@ -169,12 +169,12 @@ class NotesEditor extends Z<"div"> {
             arrayForIn([
                 "tap", "hold", "flick", "drag"
             ], (v) => new BoxOption(v))
-            ).onChange(() => this.noteType = NoteType[this.$typeOption.value.text])
+            ).whenValueChange(() => this.noteType = NoteType[this.$typeOption.value.text])
         this.$noteAboveOption = new ZDropdownOptionBox([new BoxOption("above"), new BoxOption("below")])
-            .onChange(() => this.noteAbove = this.$noteAboveOption.value.text === "above");
+            .whenValueChange(() => this.noteAbove = this.$noteAboveOption.value.text === "above");
         this.notesSelection = new Set();
         this.$selectOption = new ZDropdownOptionBox(["none", "extend", "replace", "exclude"].map(v => new BoxOption(v)))
-                                .onChange((v: string) => {
+                                .whenValueChange((v: string) => {
                                     this.selectState = SelectState[v];
                                     if (this.selectState === SelectState.none) {
                                         this.state = NotesEditorState.select;
