@@ -22,7 +22,7 @@ class OperationList extends EventTarget {
                 this.dispatchEvent(new Event("firstmodified"))
             }
             this.undoneOperations.push(op)
-            op.undo()
+            op.undo(this.chart)
             if (op.updatesEditor) {
                 editor.update()
             }
@@ -38,7 +38,7 @@ class OperationList extends EventTarget {
                 this.dispatchEvent(new Event("firstmodified"))
             }
             this.operations.push(op)
-            op.do()
+            op.do(this.chart)
             if (op.updatesEditor) {
                 this.dispatchEvent(new Event("needsupdate"))
             }
@@ -69,7 +69,7 @@ class OperationList extends EventTarget {
                 }
             }
         }
-        operation.do();
+        operation.do(this.chart);
         if (operation.updatesEditor) {
             this.dispatchEvent(new Event("needupdate"));
         }
@@ -94,8 +94,8 @@ abstract class Operation {
     constructor() {
 
     }
-    abstract do(): void
-    abstract undo(): void
+    abstract do(chart: Chart): void
+    abstract undo(chart: Chart): void
     rewrite(op: typeof this): boolean {return false;}
 }
 
@@ -107,20 +107,21 @@ class ComplexOperation<T extends Operation[]> extends Operation {
         this.subOperations = sub
         this.length = sub.length
     }
-    do() {
+    // 这样子写不够严密，如果要继承这个类，并且子操作需要谱面，就要重写这个方法的签名
+    do(chart?: Chart) {
         const length = this.length
         for (let i = 0; i < length; i++) {
             const op = this.subOperations[i]
             if (op.ineffective) { continue; }
-            op.do()
+            op.do(chart)
         }
     }
-    undo() {
+    undo(chart?: Chart) {
         const length = this.length
         for (let i = length - 1; i >= 0; i--) {
             const op = this.subOperations[i]
             if (op.ineffective) { continue; }
-            op.undo()
+            op.undo(chart)
         }
     }
 }
@@ -880,5 +881,27 @@ class JudgeLineENSChangeOperation extends Operation {
     }
     undo() {
         this.judgeLine.eventLayers[this.layerId][this.typeStr] = this.originalValue;
+    }
+}
+
+class EventNodeSequenceRenameOperation extends Operation { 
+    updatesEditor: boolean = true;
+    originalName: string;
+    constructor(public sequence: EventNodeSequence, public newName: string) {
+        super();
+        this.originalName = sequence.id;
+        if (this.originalName === newName) {
+            this.ineffective = true;
+        }
+    }
+    do(chart: Chart) {
+        chart.sequenceMap.set(this.newName, this.sequence)
+        chart.sequenceMap.delete(this.originalName);
+        this.sequence.id = this.newName;
+    }
+    undo(chart: Chart) {
+        chart.sequenceMap.set(this.originalName, this.sequence)
+        chart.sequenceMap.delete(this.newName);
+        this.sequence.id = this.originalName;
     }
 }

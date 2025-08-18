@@ -454,6 +454,14 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
                 notify("Layer index out of range. Range is [0, 3]");
                 return;
             }
+            if (name.startsWith("->")) {
+                name = name.substring(2);
+                if (editor.chart.sequenceMap.get(name)) {
+                    notify("Fail to rename for the sequence already exists");
+                }
+                editor.operationList.do(new EventNodeSequenceRenameOperation(this.target.eventLayers[layer][typeStr], name))
+                return;
+            }
             const ens = editor.chart.sequenceMap.get(name);
             if (!ens) {
                 notify("No such sequence!");

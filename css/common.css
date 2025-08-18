@@ -41,15 +41,23 @@ dialog[open] {
     background-color: #FFF;
     color: black;
     min-height: 1em;
-    width: 4em;
+    width: min-content;
+    padding-inline: 0.5em;
     text-align: center;
     margin-block: auto;
     position: relative;
 }
-.dropdown-option-box > span {
+
+.search-box {
+    position: relative;
+    margin-block: auto;
+    width: min-content;
+    color: black;
 }
 
-.dropdown-option-box .dropdown-option-list {
+.dropdown-option-box .dropdown-option-list,
+.search-box .dropdown-option-list
+{
     top: 100%;
     position: absolute;
     min-width: 4em;
@@ -59,13 +67,15 @@ dialog[open] {
     overflow-y: auto;
 }
 
-.dropdown-option-box.up .dropdown-option-list {
+.dropdown-option-box.up .dropdown-option-list,
+.search-box.up .dropdown-option-list
+{
     top: unset;
     bottom: 100% !important;
     position: absolute;
 }
 
-.dropdown-option-box:hover .dropdown-option-list {
+.dropdown-option-box:hover .dropdown-option-list, .search-box:has(> input:focus) .dropdown-option-list {
     display: block;
     background-color: #BBB;
     border: 1px solid black;
