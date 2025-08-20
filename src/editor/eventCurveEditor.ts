@@ -226,7 +226,7 @@ class EventCurveEditors extends Z<"div"> {
         this.draw()
     }
     updateAdjustmentOptions(editor: EventCurveEditor) {
-        this.$rangeInput.setValue(editor.autoRangeEnabled ? "auto" : editor.valueRange.join("，"))
+        this.$rangeInput.setValue(editor.autoRangeEnabled ? "auto" : editor.valueRange.join(","))
     }
 }
 
