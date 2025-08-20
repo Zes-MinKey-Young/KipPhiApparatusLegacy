@@ -167,23 +167,66 @@ class NoteEditor extends SideEntityEditor<Note> {
 }
 
 class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
-    $reverse: ZButton;
-    $delete: ZButton;
+    readonly $reverse = new ZButton("Delete").addClass("destructive");
+    readonly $delete = new ZButton("Reverse");
+    readonly $propOptionBox = new ZDropdownOptionBox([
+        "above", "alpha", "endTime", "isFake", "judgeSize", "positionX",
+        "size", "speed", "startTime", "tint", "tintHitEffects", "type",
+        "visibleBeats", "yOffset"
+    ].map((n) => new BoxOption(n)));
+    readonly $code = new ZTextArea();
+    readonly $execute = new ZButton("Execute");
+
     constructor() {
-        super()
-        this.$title.text("Multi Notes")
-        this.$delete = new ZButton("Delete").addClass("destructive");
-        this.$reverse = new ZButton("Reverse");
+        super();
+        this.$title.text("Multi Notes");
         this.$body.append(
             this.$delete,
-            this.$reverse
+            this.$reverse,
+            $("span")
+                .addClass("flex-row")
+                .append(
+                    $("span").text("eachNote"),
+                    $("span").text("."),
+                    this.$propOptionBox,
+                    $("span").text(" = ")
+                ),
+            $("div").append(this.$code, this.$execute)
+
         );
+        this.$execute.onClick(() => {
+            const code = this.$code.getValue();
+            const prop = this.$propOptionBox.value.text as NoteValueField;
+            const fn = new Function("val", "note", "return " + code);
+            const sortedNotes = [...this.target].sort((a, b) => TC.gt(a.startTime, b.startTime) ? 1 : -1);
+            const generateOp = ({
+                "above":          n => new NoteValueChangeOperation(n, "above",          fn(n.above, n)),
+                "alpha":          n => new NoteValueChangeOperation(n, "alpha",          fn(n.alpha, n)),
+                "endTime":        n => new HoldEndTimeChangeOperation(n,                 fn(n.endTime, n)),
+                "isFake":         n => new NoteValueChangeOperation(n, "isFake",         fn(n.isFake, n)),
+                "judgeSize":      n => new NoteValueChangeOperation(n, "judgeSize",      fn(n.judgeSize, n)),
+                "positionX":      n => new NoteValueChangeOperation(n, "positionX",      fn(n.positionX, n)),
+                "size":           n => new NoteValueChangeOperation(n, "size",           fn(n.size, n)),
+                "speed":          n => new NoteSpeedChangeOperation(n,                   fn(n.speed, n), n.parentNode.parentSeq.parentLine),
+                "startTime":      n => new NoteTimeChangeOperation(n, n.parentNode.parentSeq.getNodeOf(fn(n.startTime, n))),
+                "tint":           n => new NoteValueChangeOperation(n, "tint",           fn(n.tint, n)),
+                "type":           n => new NoteValueChangeOperation(n, "type",           fn(n.type, n)),
+                "visibleBeats":   n => new NoteValueChangeOperation(n, "visibleBeats",   fn(n.visibleBeats, n)),
+                "yOffset":        n => new NoteYOffsetChangeOperation(n,                 fn(n.yOffset, n), n.parentNode.parentSeq.parentLine),
+                "tintHitEffects": n => new NoteValueChangeOperation(n, "tintHitEffects", fn(n.tintHitEffects, n)),
+            } satisfies Record<NoteValueField, (n: Note) => Operation>)[prop];
+            editor.operationList.do(
+                new ComplexOperation<Operation[]>(
+                    ...sortedNotes.map<Operation>(generateOp)
+                )
+            )
+        });
         this.$reverse.onClick(() => {
             editor.operationList.do(new ComplexOperation(...[...this.target].map(n => new NoteValueChangeOperation(n, "positionX", -n.positionX))))
-        })
+        });
         this.$delete.onClick(() => {
             editor.operationList.do(new MultiNoteDeleteOperation(this.target))
-        })
+        });
     }
     update(): void {
 
@@ -191,17 +234,56 @@ class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
 }
 
 class MultiNodeEditor extends SideEntityEditor<Set<EventStartNode>> {
-    $reverse: ZButton;
-    $delete: ZButton;
+    readonly $reverse       = new ZButton("Delete").addClass("destructive");
+    readonly $delete        = new ZButton("Reverse");
+    readonly $startEndOptionBox = new ZDropdownOptionBox([
+        "start",
+        "end"
+    ].map((v) => new BoxOption(v)));
+    readonly $propOptionBox = new ZDropdownOptionBox([
+        "value",
+        "time"
+    ].map((x) => new BoxOption(x)));
+    readonly $code          = new ZTextArea();
+    readonly $execute       = new ZButton("Execute");
     constructor() {
         super();
         this.$title.text("Multi Nodes");
-        this.$delete = new ZButton("Delete").addClass("destructive");
-        this.$reverse = new ZButton("Reverse");
         this.$body.append(
+
             this.$delete,
-            this.$reverse
+            this.$reverse,
+            $("span")
+                .addClass("flex-row")
+                .append(
+                    $("span").text("each"),
+                    this.$startEndOptionBox,
+                    $("span").text("."),
+                    this.$propOptionBox,
+                    $("span").text(" = ")
+                ),
+            $("div").append(this.$code, this.$execute)
         );
+
+        this.$execute.onClick(() => {
+            const code = this.$code.getValue();
+            const fn = new Function("val", "node", "return " + code);
+            let sortedNodes: EventStartNode[] | EventEndNode[] = [...this.target].sort((a, b) => TimeCalculator.gt(a.time, b.time) ? 1 : -1);
+            const startOrEnd = this.$startEndOptionBox.value.text;
+            if (startOrEnd === "end") {
+                sortedNodes = sortedNodes.map(n => n.next).filter(n => n.type === NodeType.MIDDLE);
+            }
+            const prop = this.$propOptionBox.value.text;
+            editor.operationList.do(
+                new ComplexOperation(
+                    ...sortedNodes.map((node: EventStartNode | EventEndNode) => {
+                        return prop === "value"
+                            ? new EventNodeValueChangeOperation(node, fn(node.value, node))
+                            : new EventNodeTimeChangeOperation(node, fn(node.time, node))
+                    })
+                )
+            )
+        })
         
         this.$reverse.onClick(() => {
             editor.operationList.do(new ComplexOperation(...[...this.target].map(n => new EventNodeValueChangeOperation(n, -n.value))))

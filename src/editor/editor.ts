@@ -50,6 +50,7 @@ class JudgeLinesEditor extends Z<"div"> {
         this.editor.player.greenLine = line.id;
         this.editor.eventCurveEditors.draw();
         this.editor.notesEditor.draw();
+        this.editor.player.render();
     }
     private orderedLayout() {
         this._selectedLine = null; // Set as null first so that the editor is correctly selected

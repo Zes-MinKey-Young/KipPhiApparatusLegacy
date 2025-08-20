@@ -236,7 +236,7 @@ class Player {
 
             context.font = "30px phigros";
             const comboMetrics = context.measureText(COMBO_TEXT);
-            const h = comboNumMetrics.actualBoundingBoxDescent + comboMetrics.actualBoundingBoxAscent + 20;
+            const h = 36;
             context.fillText(COMBO_TEXT, -comboMetrics.width / 2, -400 + h);
 
 
@@ -290,6 +290,12 @@ class Player {
         context.strokeStyle = rgba(...(this.greenLine === judgeLine.id ? ([100, 255, 100] as RGB) : lineColor), alpha / 255)
         drawLine(context, -2025, 0, 2025, 0) // Fixes #1
         context.drawImage(ANCHOR, -10, -10)
+        context.save();
+        context.scale(1, -1);
+        context.fillStyle = "white";
+        context.font = "40px phigros";
+        context.fillText(`#${judgeLine.id} ${judgeLine.name.toLowerCase() === "untitled" ? "" : judgeLine.name}`, 10, 50);
+        context.restore();
 
         /** 判定线的法向量 */
         const nVector: Vector = getVector(theta)[1] // 奇变偶不变，符号看象限(
@@ -385,32 +391,7 @@ class Player {
 
         }
 
-        this.playSounds()
-
-        
-        
-        /*
-        for (let eachSpeed in judgeLine.noteSpeeds) {
-            const speed = parseFloat(eachSpeed)
-            let notes = judgeLine.noteSpeeds[eachSpeed];
-            /** 判定线在假想的瀑布中前进距离 /
-            let currentPositionY = judgeLine.computeLinePositionY(this.beats, this.chart.timeCalculator) * speed;
-            for (let eachNote of notes) {
-                /** Note在某一时刻与判定线的距离 /
-                const positionY: number = eachNote.positionY - currentPositionY;
-                const endPositionY = eachNote.endPositionY - currentPositionY;
-                if (!positionY && positionY !== 0 || !endPositionY && endPositionY !== 0) {
-                    debugger;
-                }
-                if (endPositionY >= 0 && TimeCalculator.toBeats(eachNote.endTime) >= this.beats) {
-                    // 绑线Note=0不要忘了
-                    this.renderNote(eachNote, positionY < 0 ? 0 : positionY, endPositionY)
-                    // console.log(eachNote, eachNote.above)
-                    // console.log("pos:", eachNote.positionY, notes.indexOf(eachNote))
-                }
-            }
-        }
-        */
+        this.playSounds();
     }
     lastUnplayedNNNode: NNNode | NNNodeLike<NodeType.TAIL>;
     playSounds() {
