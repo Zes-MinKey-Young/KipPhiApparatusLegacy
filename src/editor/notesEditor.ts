@@ -303,7 +303,7 @@ class NotesEditor extends Z<"div"> {
                         positionX: this.pointedPositionX,
                         above: this.noteAbove ? 1 : 0,
                         speed: this.targetNNList?.speed || undefined,
-                        type: this.noteType
+                        type: noteType
                     } as NoteDataKPA;
                     extend(createOptions, this.defaultConfig);
                     const note = Note.fromKPAJSON(createOptions, null); // 这里只能用visibleBeats创建，因此不需要tc
@@ -312,14 +312,6 @@ class NotesEditor extends Z<"div"> {
                     break;
             }
         });
-        /*
-        window.addEventListener("resize", () => {
-            const {clientHeight: outerHeight, clientWidth: outerWidth} = editor.$preview.element;
-            const {clientHeight, clientWidth} = editor.player.canvas;
-            this.canvas.width = outerWidth - clientWidth;
-            this.canvas.height = outerHeight;
-        });
-        //*/
         
         this.timeGridColor = [120, 255, 170];
         this.positionGridColor = [255, 170, 120];
