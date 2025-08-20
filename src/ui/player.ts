@@ -576,6 +576,7 @@ class Player {
         if (!note.above) {
             positionY = -positionY;
             endpositionY = -endpositionY
+            zero = -zero;
         }
         let length = endpositionY - positionY
         const size = this.noteSize * note.size;
