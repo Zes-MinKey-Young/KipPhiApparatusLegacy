@@ -5,6 +5,12 @@ class NeedsReflowEvent extends Event {
     }
 }
 
+class OperationEvent extends Event {
+    constructor(t: string, public operation: Operation) {
+        super(t);
+    }
+}
+
 
 class OperationList extends EventTarget {
     operations: Operation[];
@@ -23,9 +29,8 @@ class OperationList extends EventTarget {
             }
             this.undoneOperations.push(op)
             op.undo(this.chart)
-            if (op.updatesEditor) {
-                editor.update()
-            }
+            this.dispatchEvent(new OperationEvent("undo", op))
+            this.processFlags(op);
         } else {
             this.dispatchEvent(new Event("noundo"))
         }
@@ -39,12 +44,8 @@ class OperationList extends EventTarget {
             }
             this.operations.push(op)
             op.do(this.chart)
-            if (op.updatesEditor) {
-                this.dispatchEvent(new Event("needsupdate"))
-            }
-            if (op.reflows) {
-                this.dispatchEvent(new NeedsReflowEvent(op.reflows))
-            }
+            this.dispatchEvent(new OperationEvent("redo", op))
+            this.processFlags(op);
         } else {
             this.dispatchEvent(new Event("noredo"))
         }
@@ -57,27 +58,33 @@ class OperationList extends EventTarget {
             this.chart.modified = true;
             this.dispatchEvent(new Event("firstmodified"))
         }
+        // 如果上一个操作是同一个构造器的，那么修改上一个操作而不是推入新的操作
         if (this.operations.length !== 0) {
                 
             const lastOp = this.operations[this.operations.length - 1]
             if (operation.constructor === lastOp.constructor) {
                 if (lastOp.rewrite(operation)) {
-                    if (operation.updatesEditor) {
-                        this.dispatchEvent(new Event("needupdate"));
-                    }
+                    this.processFlags(operation)
                     return;
                 }
             }
         }
         operation.do(this.chart);
+        this.dispatchEvent(new OperationEvent("do", operation));
+        this.processFlags(operation);
+        this.operations.push(operation);
+    }
+    processFlags(operation: Operation) {
+
         if (operation.updatesEditor) {
-            this.dispatchEvent(new Event("needupdate"));
+            this.dispatchEvent(new Event("needsupdate"));
+        }
+        if (operation.needsComboRecount) {
+            this.dispatchEvent(new Event("maxcombochanged"));
         }
         if (operation.reflows) {
-            console.log(operation.reflows)
             this.dispatchEvent(new NeedsReflowEvent(operation.reflows))
         }
-        this.operations.push(operation);
     }
     clear() {
         this.operations = [];
@@ -91,12 +98,16 @@ abstract class Operation {
     updatesEditor: boolean;
     // 用于判定线编辑区的重排，若操作完成时的布局为这个值就会重排
     reflows: number;
+    needsComboRecount: boolean;
     constructor() {
 
     }
     abstract do(chart: Chart): void
     abstract undo(chart: Chart): void
     rewrite(op: typeof this): boolean {return false;}
+    toString(): string {
+        return this.constructor.name;
+    }
 }
 
 class ComplexOperation<T extends Operation[]> extends Operation {
@@ -106,6 +117,9 @@ class ComplexOperation<T extends Operation[]> extends Operation {
         super()
         this.subOperations = sub
         this.length = sub.length
+        this.reflows = sub.reduce((prev, op) => prev | op.reflows, 0);
+        this.updatesEditor = sub.some((op) => op.updatesEditor);
+        this.needsComboRecount = sub.some((op) => op.needsComboRecount);
     }
     // 这样子写不够严密，如果要继承这个类，并且子操作需要谱面，就要重写这个方法的签名
     do(chart?: Chart) {
@@ -142,6 +156,9 @@ class NoteValueChangeOperation<T extends NoteValueField> extends Operation {
         this.note = note;
         this.value = value;
         this.previousValue = note[field]
+        if (field === "isFake") {
+            this.needsComboRecount = true;
+        }
         if (value === note[field]) {
             this.ineffective = true
         }
@@ -171,6 +188,7 @@ class NoteRemoveOperation extends Operation {
     noteNode: NoteNode;
     note: Note;
     isHold: boolean;
+    needsComboRecount = true;
     constructor(note: Note) {
         super()
         this.note = note // In memory of forgettting to add this(
@@ -237,6 +255,7 @@ class NoteAddOperation extends Operation {
     note: Note;
     isHold: boolean;
     updatesEditor = true
+    needsComboRecount = true;
     constructor(note: Note, node: NoteNode) {
         super()
         this.note = note;
@@ -272,6 +291,7 @@ class NoteAddOperation extends Operation {
 
 class MultiNoteAddOperation extends ComplexOperation<NoteAddOperation[]> {
     updatesEditor = true
+    needsComboRecount = true;
     constructor(notes: Set<Note> | Note[], judgeLine: JudgeLine) {
         if (notes instanceof Set) {
             notes = [...notes];
@@ -289,6 +309,7 @@ class MultiNoteAddOperation extends ComplexOperation<NoteAddOperation[]> {
 class NoteTimeChangeOperation extends ComplexOperation<[NoteRemoveOperation, NoteValueChangeOperation<"startTime">, NoteAddOperation]> {
     note: Note
     updatesEditor = true
+    needsComboRecount = false;
     constructor(note: Note, noteNode: NoteNode) {
         super(
             new NoteRemoveOperation(note),
@@ -320,6 +341,8 @@ class NoteTimeChangeOperation extends ComplexOperation<[NoteRemoveOperation, Not
 }
 
 class HoldEndTimeChangeOperation extends NoteValueChangeOperation<"endTime"> {
+    
+    needsComboRecount = false;
     constructor(note: Note, value: TimeT) {
         super(note, "endTime", value)
         if (!TimeCalculator.gt(value, note.startTime)) {

@@ -346,7 +346,6 @@ class NoteNode extends NoteNodeLike<NodeType.MIDDLE> implements TwoDirectionNode
     }
 }
 
-
 class NNList {
     /** 格式为#xxoxx或$xxoxx，亦可自命名 */
     id: string;
@@ -378,8 +377,8 @@ class NNList {
         this.effectiveBeats = effectiveBeats
     }
     /** 此方法永远用于最新KPAJSON */
-    static fromKPAJSON(isHold: boolean, effectiveBeats: number, data: NNListDataKPA, nnnList: NNNList, timeCalculator: TimeCalculator) {
-        const list = isHold ? new HNList(data.speed, data.medianYOffset, effectiveBeats) : new NNList(data.speed, data.medianYOffset, effectiveBeats)
+    static fromKPAJSON<T extends boolean>(isHold: T, effectiveBeats: number, data: NNListDataKPA, nnnList: NNNList, timeCalculator: TimeCalculator): T extends true ? HNList : NNList {
+        const list: T extends true ? HNList : NNList = isHold ? new HNList(data.speed, data.medianYOffset, effectiveBeats) : new NNList(data.speed, data.medianYOffset, effectiveBeats)
         const nnlength = data.noteNodes.length
         let cur: NNOrHead = list.head;
         for (let i = 0; i < nnlength; i++) {
@@ -534,9 +533,14 @@ type AnyNNN = NNNode | NNNodeLike<NodeType.HEAD> | NNNodeLike<NodeType.TAIL>;
 
 class NNNodeLike<T extends NodeType> {
     previous: NNNOrHead;
-    next: NNNOrTail
+    next: NNNOrTail;
+    startTime: TimeT;
     constructor(public type: T) {
-
+        if (type === NodeType.HEAD) {
+            this.startTime = [0, 0, 1];
+        } else if (type === NodeType.TAIL) {
+            this.startTime = [Infinity, 0, 1];
+        }
     }
 }
 
@@ -544,7 +548,6 @@ class NNNode extends NNNodeLike<NodeType.MIDDLE> implements TwoDirectionNode {
     readonly noteNodes: NoteNode[];
     readonly holdNodes: NoteNode[];
     readonly startTime: TimeT;
-    real: number;
     noteOfType: [number, number, number, number]
     constructor(time: TimeT) {
         super(NodeType.MIDDLE);

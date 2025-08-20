@@ -175,7 +175,7 @@ class EventCurveEditors extends Z<"div"> {
 
     }
     init() {
-        const barHeight = this.$bar.clientHeight;
+        const barHeight = this.$bar.clientHeight + 8;
         for (let type of ["moveX", "moveY", "alpha", "rotate", "speed", "easing", "bpm"] as const) {
             this[type] = new EventCurveEditor(EventType[type], this.parent.clientHeight - barHeight, this.parent.clientWidth, this);
             this[type].active = false;

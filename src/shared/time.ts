@@ -62,7 +62,7 @@ class BPMSequence extends EventNodeSequence {
     head: BPMNodeLike<NodeType.HEAD>;
     tail: BPMNodeLike<NodeType.TAIL>;
     /** 从拍数访问节点 */
-    jump: JumpArray<AnyBN>;
+    jump: JumpArray<AnyEN>;
     /** 以秒计时的跳数组，处理从秒访问节点 */
     secondJump: JumpArray<AnyBN>;
     constructor(bpmList: BPMSegmentData[], public duration: number) {
@@ -134,12 +134,13 @@ class BPMSequence extends EventNodeSequence {
                     return [time, nextNode];
                 }
             },
+            // @ts-expect-error
             (node: BPMStartNode, seconds: number) => {
                 return node.cachedIntegral > seconds ? false : (<BPMEndNode>node.next).next;
             }
         );
     }
-    updateJump(from: TypeOrHeader<EventStartNode>, to: TypeOrTailer<EventStartNode>): void {
+    updateJump(from: ENOrHead, to: ENOrTail): void {
         super.updateJump(from, to);
         this.updateSecondJump();
     }
@@ -152,7 +153,7 @@ class BPMSequence extends EventNodeSequence {
         if (node.type === NodeType.TAIL) {
             return node.previous;
         }
-        return node;
+        return node as BPMStartNode;
     }
     dumpBPM(): BPMSegmentData[] {
         let cur = this.head.next;

@@ -10,6 +10,8 @@ const HALF_HIT = HIT_EFFECT_SIZE / 2
 // 以原点为中心，渲染的半径
 const RENDER_SCOPE = 900;
 
+const COMBO_TEXT = "KIPPHI"
+
 const getVector = (theta: number): [Vector, Vector] => [[Math.cos(theta), Math.sin(theta)], [-Math.sin(theta), Math.cos(theta)]]
 type HEX = number;
 
@@ -33,6 +35,11 @@ class Player {
     tintEffectMapping: Map<HEX, OffscreenCanvas | ImageBitmap> = new Map();
 
     greenLine: number = 0;
+
+    currentCombo: number = 0;
+    lastUncountedNNN: NNNOrTail | null = null;
+    lastUncountedTailNNN: NNNOrTail | null = null;
+    lastCountedBeats: number = 0;
     
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas
@@ -106,6 +113,67 @@ class Player {
         const {canvas, context} = this;
         this.renderGreyScreen()
     }
+    computeCombo() {
+        const {chart} = this;
+        const beats = this.beats;
+        const timeCalculator = chart.timeCalculator;
+        let lastUncountedNNN = this.lastUncountedNNN || chart.nnnList.head.next;
+        let lastUncountedTailNNN = this.lastUncountedTailNNN || chart.nnnList.head.next
+        let lastCountedBeats = this.lastCountedBeats || 0;
+        let combo = this.currentCombo;
+        if (!this.playing) {
+            combo = 0;
+            lastUncountedNNN = chart.nnnList.head.next;
+            lastUncountedTailNNN = chart.nnnList.head.next;
+            lastCountedBeats = 0;
+        }
+        const countUntil = chart.nnnList.getNodeAt(beats);
+        if (!TimeCalculator.lt(countUntil.startTime, lastUncountedNNN.startTime)) {
+            for (let node: NNNOrTail = lastUncountedNNN; node.type !== NodeType.TAIL && node !== countUntil; node = node.next) {
+                const nns = node.noteNodes;
+                const nnsLength = nns.length;
+                for (let i = 0; i < nnsLength; i++) {
+                    const nn = nns[i];
+                    combo += nn.notes.reduce((num: number, note: Note) => num + (note.isFake ? 0 : 1), 0);
+                }
+            }
+            this.lastUncountedNNN = countUntil;
+        }
+        const countHoldTailUntil = chart.nnnList.getNodeAt(beats);
+        if (!TimeCalculator.lt(countHoldTailUntil.startTime, lastUncountedNNN.startTime)) {
+            let uncounted = null;
+            for (let node: NNNOrTail = lastUncountedTailNNN; node.type !== NodeType.TAIL && node !== countHoldTailUntil; node = node.next) {
+                const hns = node.holdNodes;
+                const len = hns.length;
+                for (let i = 0; i < len; i++) {
+                    const hn = hns[i];
+                    const notes = hn.notes;
+                    const l = notes.length;
+                    let j = 0;
+                    for (; j < l; j++) {
+                        const note = notes[j];
+                        if (TimeCalculator.toBeats(note.endTime) > beats) {
+                            if (!uncounted) {
+                                uncounted = node;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    for (; j < l; j++) {
+                        const note = notes[j];
+                        if (note.isFake || TimeCalculator.toBeats(note.endTime) < lastCountedBeats) {
+                            continue;
+                        }
+                        combo++;
+                    }
+                }
+            }
+            this.lastUncountedTailNNN = uncounted || countHoldTailUntil;
+            this.lastCountedBeats = beats;
+        }
+        this.currentCombo = combo;
+    }
     render() {
         if (!ENABLE_PLAYER) {
             return;
@@ -144,12 +212,37 @@ class Player {
 
         const showInfo = settings.get("playerShowInfo");
         if (showInfo) {
+            console.log(context.getTransform())
+            this.computeCombo();
             context.fillStyle = "#ddd"
-            context.font = "50px phigros"
+            context.font = "40px phigros"
             const chart = this.chart;
             const title = chart.name;
             const level = chart.level;
-            context.fillText(title, -650, 400);
+            const combo = this.currentCombo;
+            context.fillText(title, -600, 400);
+
+            const metrics = context.measureText(level)
+            context.fillText(level, 600 - metrics.width, 400);
+
+            const score = combo / chart.maxCombo * 100_0000;
+            const text = score.toFixed(0).padStart(7, "0")
+            const scoreMetrics = context.measureText(text);
+            context.fillText(text, 600 -scoreMetrics.width, -400);
+
+            context.font = "60px phigros"
+            const comboNumMetrics = context.measureText(combo.toString());
+            context.fillText(combo.toString(), -comboNumMetrics.width / 2, -400);
+
+            context.font = "30px phigros";
+            const comboMetrics = context.measureText(COMBO_TEXT);
+            const h = comboNumMetrics.actualBoundingBoxDescent + comboMetrics.actualBoundingBoxAscent + 20;
+            context.fillText(COMBO_TEXT, -comboMetrics.width / 2, -400 + h);
+
+
+
+
+
             context.restore()
             context.save()
         }
@@ -384,7 +477,7 @@ class Player {
                 const {x, y} = new Coordinate(posX, yo).mul(matrix);
                 // console.log("he", x, y);
                 const he = note.tintHitEffects;
-                const nth = Math.floor((this.time - timeCalculator.toSeconds(beats)) * 30);
+                const nth = Math.floor((this.time - timeCalculator.toSeconds(beats)) * 16);
                 drawNthFrame(hitContext, he !== undefined ? this.getTintHitEffect(he) : HIT_FX, nth,x - HALF_HIT, y - HALF_HIT, HIT_EFFECT_SIZE, HIT_EFFECT_SIZE)
             }
 
@@ -425,7 +518,7 @@ class Player {
                 const posX = note.positionX;
                 const yo = note.yOffset * (note.above ? 1 : -1);
                 const {x, y} = new Coordinate(posX, yo).mul(matrix);
-                const nth = Math.floor((this.beats - Math.floor(this.beats)) * 30);
+                const nth = Math.floor((this.beats - Math.floor(this.beats)) * 16);
                 const he = note.tintHitEffects;
                 
                 drawNthFrame(hitContext, he !== undefined ? this.getTintHitEffect(he) : HIT_FX, nth,

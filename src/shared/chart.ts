@@ -92,6 +92,7 @@ class Chart {
 
     
     modified: boolean = false;
+    maxCombo: number = 0;
     constructor() {}
     getEffectiveBeats() {
         const effectiveBeats = this.timeCalculator.secondsToBeats(this.duration)
@@ -100,7 +101,7 @@ class Chart {
         return this.effectiveBeats
     }
     static fromRPEJSON(data: ChartDataRPE, duration: number) {
-        let chart = new Chart();
+        const chart = new Chart();
         chart.judgeLineGroups = data.judgeLineGroup.map(group => new JudgeLineGroup(group));
         chart.bpmList = data.BPMList;
         chart.name = data.META.name;
@@ -138,6 +139,7 @@ class Chart {
                 chart.orphanLines.push(line);
             }
         }
+        chart.countMaxCombo();
         return chart
     }
     static fromKPAJSON(data: ChartDataKPA) {
@@ -178,7 +180,7 @@ class Chart {
             chart.orphanLines.push(line)
         }
         chart.judgeLines.sort((a, b) => a.id - b.id);
-
+        chart.countMaxCombo();
         return chart;
     }
     updateCalculator() {
@@ -221,24 +223,27 @@ class Chart {
             rpeChartTime: this.rpeChartingTime
         };
     }
-    getJudgeLineGroups(): string[] {
-        // 实现分组逻辑（示例实现）
-        return Array.from(new Set(
-            this.judgeLines.map(line => line.groupId.toString())
-        ));
-    }
-    /*
-    getComboInfoEntity(time: TimeT) {
-        const key = toTimeString(time);
-        if (key in this.comboMapping) {
-            return this.comboMapping[key]
-        } else {
-            return this.comboMapping[key] = new ComboInfoEntity()
-        }
-    }
-    */
     createNNNode(time: TimeT) {
      return new NNNode(time)
+    }
+    countMaxCombo() {
+        let combo = 0;
+        const nnnlist = this.nnnList;
+        for (let node: NNNOrTail = nnnlist.head.next; node.type !== NodeType.TAIL; node = node.next) {
+            const nns = node.noteNodes;
+            const nnsLength = nns.length;
+            for (let i = 0; i < nnsLength; i++) {
+                const nn = nns[i];
+                combo += nn.notes.reduce((prev, note) => prev + (note.isFake ? 0 : 1), 0);
+            }
+            const hns = node.holdNodes;
+            const hnsLength = hns.length;
+            for (let i = 0; i < hnsLength; i++) {
+                const hn = hns[i];
+                combo += hn.notes.reduce((prev, hold) => prev + (hold.isFake ? 0 : 1), 0);
+            }
+        }
+        this.maxCombo = combo;
     }
 }
 
@@ -273,45 +278,3 @@ class JudgeLineGroup {
         }
     }
 }
-
-/*
-class ComboInfoEntity {
-    tap: number;
-    drag: number;
-    holdHead: number;
-    flick: number;
-    hold: number;
-    real: number;
-    fake: number;
-    realEnd: number;
-    previous: TypeOrHeader<ComboInfoEntity>;
-    next: TypeOrTailer<ComboInfoEntity>;
-    constructor() {
-        this.tap = 0;
-        this.drag = 0;
-        this.holdHead = 0;
-        this.hold = 0;
-        this.flick = 0;
-        this.real = 0;
-        this.fake = 0;
-        this.realEnd = 0;
-    }
-    add(note: Note) {
-        if (note.isFake) {
-            this.fake++
-        } else {
-            this.real++
-        }
-        this[NoteType[note.type]]++
-    }
-    remove(note: Note) {
-        if (note.isFake) {
-            this.fake--
-        } else {
-            this.real--
-        }
-        
-        this[NoteType[note.type]]--
-    }
-}
-*/

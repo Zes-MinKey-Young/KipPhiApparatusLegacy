@@ -85,6 +85,7 @@ class Z<K extends HTMLElementTagName> extends EventTarget {
         if (value) {
             this.element.style[name] = value
         }
+        return this;
     }
     append(...$elements: (Z<any> | HTMLElement)[]) {
         const elements = new Array($elements.length);

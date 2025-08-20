@@ -63,9 +63,6 @@ class JudgeLine {
             for (let i = 0; i < len; i++) {
                 const note: Note = new Note(notes[i]);
                 note.computeVisibleBeats(timeCalculator);
-                if (note.speed === 0) {
-                    debugger;
-                }
                 const tree = line.getNNList(note.speed, note.yOffset, note.type === NoteType.hold, false)
                 const cur = tree.currentPoint
                 const lastHoldTime: TimeT = cur.type === NodeType.HEAD ? [-1, 0, 1] : cur.startTime
@@ -130,7 +127,7 @@ class JudgeLine {
                 const listData = lists[name];
                 if (!isOld) {
                         
-                    const list: NNList = NNList.fromKPAJSON(isHold, chart.effectiveBeats, listData, nnnList, timeCalculator);
+                    const list = NNList.fromKPAJSON(isHold, chart.effectiveBeats, listData, nnnList, timeCalculator);
                     list.parentLine = line;
                     list.id = name
                     line[key].set(name, list);
@@ -187,8 +184,8 @@ class JudgeLine {
                 } else {
                     const node = new NoteNode(noteData.startTime);
                     node.add(note);
-                    nnnList.addNoteNode(node);
                     NoteNode.connect(cur, node);
+                    nnnList.addNoteNode(node);
                     list.currentPoint = node;
                 }
             }

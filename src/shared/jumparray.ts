@@ -88,7 +88,7 @@ class JumpArray<T extends TwoDirectionNodeLike> {
     updateRange(firstNode: T, lastNode: T) {
         const {endNextFn, effectiveBeats, resolveLastNode} = this;
         lastNode = resolveLastNode(lastNode);
-        console.log(firstNode, lastNode)
+        // console.log(firstNode, lastNode)
         /**
          * 
          * @param startTime 

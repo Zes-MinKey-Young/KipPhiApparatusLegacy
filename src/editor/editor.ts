@@ -25,7 +25,7 @@ class JudgeLinesEditor extends Z<"div"> {
         this.chart = editor.chart;
         this.editor = editor
         this.element = element;
-        this.orderedLayout();
+        this.reflow(JudgeLinesEditorLayoutType.ordered)
     }
     private _selectedLine: JudgeLine;
     get selectedLine() {
@@ -141,6 +141,12 @@ class JudgeLinesEditor extends Z<"div"> {
                 this.treeLayout();
                 break;
         }
+        this.append(new ZButton("Scroll into view")
+            .css("position", "absolute")
+            .css("right", "2px")
+            .onClick(() => {
+                this.editors.get(this.selectedLine).element.scrollIntoView();
+            }))
         this.dispatchEvent(new Event("reflow"));
     }
 }
@@ -251,10 +257,14 @@ const tips = [
     "[露出了6号缓动]",
     "本软件是“奇谱发生器”，不是“八股谱发生器”更不是“粪谱发生器”",
     "奇谱发生器我爱你。饮水机我爱你。李纯真我爱你。欢乐牧场我爱你。娜奇我爱你。百零六我爱你。Sildild我爱你。",
+    "https://pgrfm.miraheze.org/为本软件的官方网站",
+    "KPAJSON本质上还是RPEJSON改的",
+    "想出“奇谱发生器”这名字的家里得请启普了",
 
     "撤销重做、复制粘贴不需要Ctrl，直接按Z/Y/C/V即可",
 
     "男人只是在Hold里塞了100个Tap，就被Phira审核活活打断了双腿",
+    "2573 + 30 ^ 2 = 3473",
 
     "天苍苍，野茫茫，风吹草低见牛羊",
     "闊靛緥婧愮偣",
@@ -502,9 +512,20 @@ class Editor extends EventTarget {
             this.operationList.addEventListener("noredo", () => {
                 notify("Nothing to redo");
             });
+            // @ts-expect-error
+            this.operationList.addEventListener("undo", (e: OperationEvent) => {
+                notify(`Undone: ${e.operation.toString()}`);
+            });
+            // @ts-expect-error
+            this.operationList.addEventListener("redo", (e: OperationEvent) => {
+                notify(`Redone: ${e.operation.toString()}`);
+            });
             this.operationList.addEventListener("needsupdate", () => {
                 this.update();
             });
+            this.operationList.addEventListener("maxcombochanged", () => {
+                this.chart.countMaxCombo();
+            })
             // @ts-expect-error
             this.operationList.addEventListener("needsreflow", (ev: NeedsReflowEvent) => {
                 if (this.judgeLinesEditor.layoutType & ev.condition) {
