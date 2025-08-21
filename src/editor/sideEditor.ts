@@ -523,7 +523,8 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
         });
         this.$del.onClick(() => {
             if (!this.target) {
-                notify("GC了")
+                notify("GC了");
+                editor.judgeLinesEditor.reflow();
                 return;
             }
             editor.operationList.do(new JudgeLineDeleteOperation(editor.chart, this.target));

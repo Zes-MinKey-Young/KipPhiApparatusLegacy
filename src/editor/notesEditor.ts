@@ -482,7 +482,7 @@ class NotesEditor extends Z<"div"> {
         context.fillStyle = "#EEE";
         context.fillText("State:" + NotesEditorState[this.state], 0, -height + 20)
         
-        if (pointedBeats)
+        if (typeof pointedBeats === "number")
             context.fillText(`PointedTime: ${pointedBeats}:${beatFraction}/${this.editor.timeDivisor}`, 0, -height + 70)
         if (this.targetNNList && this.targetNNList.timeRanges) {
             context.fillText("Range:" + arrayForIn(this.targetNNList.timeRanges, (range) => range.join("-")).join(","), -100, -height + 50)
@@ -530,12 +530,6 @@ class NotesEditor extends Z<"div"> {
         const {context, canvas} = this;
         const {width: canvasWidth, height: canvasHeight} = canvas;
         const {
-            positionGridSpan,
-            positionRatio,
-            positionSpan: positionRange,
-            positionBasis,
-            
-            timeGridSpan,
             timeSpan: timeRange,
             timeRatio,
             

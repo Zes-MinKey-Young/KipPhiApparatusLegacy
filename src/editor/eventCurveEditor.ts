@@ -745,8 +745,8 @@ class EventCurveEditor {
         context.fillText("Sequence: " + this.target.id, 10, -50)
         context.fillText(`fps: ${shortenFloat(editor.frameRate, 2)}`, 10, -70);
         context.fillText(`Time: ${shortenFloat(editor.player.time, 4)}s`, 10, 40)
-        if (this.pointedBeats) {
-            context.fillText(`pointedTime: ${this.pointedBeats}:${this.beatFraction}:${editor.timeDivisor}`, 10, 10);
+        if (typeof this.pointedBeats === "number") {
+            context.fillText(`pointedTime: ${this.pointedBeats}:${this.beatFraction}/${editor.timeDivisor}`, 10, 10);
         }
 
         if (this.canvasPoint) {
