@@ -55,7 +55,7 @@ abstract class EventNode extends EventNodeLike<NodeType.MIDDLE> {
     easing: Easing;
     constructor(time: TimeT, value: number) {
         super(NodeType.MIDDLE);
-        this.time = time;
+        this.time = TimeCalculator.validateIp(time);
         this.value = value ?? 0;
         this.easing = linearEasing
     }

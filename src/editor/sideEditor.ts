@@ -167,8 +167,8 @@ class NoteEditor extends SideEntityEditor<Note> {
 }
 
 class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
-    readonly $reverse = new ZButton("Delete").addClass("destructive");
-    readonly $delete = new ZButton("Reverse");
+    readonly $reverse = new ZButton("Reverse");
+    readonly $delete = new ZButton("Delete").addClass("destructive");
     readonly $propOptionBox = new ZDropdownOptionBox([
         "above", "alpha", "endTime", "isFake", "judgeSize", "positionX",
         "size", "speed", "startTime", "tint", "tintHitEffects", "type",
@@ -444,6 +444,7 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
     readonly $createLine        = new ZButton("Create");
     readonly $rotatesWithFather = new ZSwitch("no", "yes");
     readonly $del               = new ZButton("Delete").addClass("destructive");
+    readonly $setAsBindNote     = new ZButton("Set as note binding").addClass("progressive");
 
     readonly $eventLayerIdInput = new ZArrowInputBox().setValue(0);
     readonly $eventType         = new ZDropdownOptionBox(["moveX", "moveY", "rotate", "alpha", "speed"].map(
@@ -463,7 +464,8 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
             $("span").text("New Group"), $("div").append(this.$newGroup, this.$createGroup),
             $("span").text("New Line"), this.$createLine,
             $("span").text("del"), this.$del,
-            this.$eventNodeSequence, this.$newEventSeqName
+            this.$eventNodeSequence, this.$newEventSeqName,
+            this.$setAsBindNote
         );
         this.$father.whenValueChange((content) => {
             if (!this.target) {
@@ -528,6 +530,42 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
                 return;
             }
             editor.operationList.do(new JudgeLineDeleteOperation(editor.chart, this.target));
+        });
+        this.$setAsBindNote.onClick(() => {
+            const judgeLine = this.target;
+            if (!judgeLine) {
+                notify("GC了");
+            }
+            const seq = judgeLine.eventLayers[0].speed;
+            if (seq.head.next === seq.tail.previous) {
+                editor.operationList.do(new EventNodeValueChangeOperation(seq.head.next, 0));
+                notify(`已将#${judgeLine.id}.0.speed唯一的事件节点设为0值`);
+            } else if (seq.head.next.next.next === seq.tail.previous) {
+                editor.operationList.do(new ComplexOperation(
+                    new EventNodeValueChangeOperation(seq.head.next, 0),
+                    new EventNodeValueChangeOperation(seq.head.next.next as EventEndNode, 0),
+                    new EventNodeValueChangeOperation(seq.head.next.next.next as EventStartNode, 0)
+                ));
+                notify(`已将#${judgeLine.id}.0.speed唯三的事件节点设为0值`);
+            } else {
+                notify("无法设为可绑线");
+                return;
+            }
+            const ySeq = judgeLine.eventLayers[0].moveY;
+            if (ySeq.head.next === seq.tail.previous) {
+                editor.operationList.do(new EventNodeValueChangeOperation(seq.head.next, 2000));
+                notify(`已将#${judgeLine.id}.0.moveY唯一的事件节点设为2000值`)
+            } else if (ySeq.head.next.next.next === ySeq.tail.previous) {
+                
+                editor.operationList.do(new ComplexOperation(
+                    new EventNodeValueChangeOperation(ySeq.head.next, 2000),
+                    new EventNodeValueChangeOperation(ySeq.head.next.next as EventEndNode, 2000),
+                    new EventNodeValueChangeOperation(ySeq.head.next.next.next as EventStartNode, 2000)
+                ));
+                notify(`已将#${judgeLine.id}.0.moveY唯三的事件节点设为2000值`)
+            } else {
+                notify("无法设置2000值");
+            }
         });
         this.$newEventSeqName.whenValueChange((name) => {
             const layer: number = this.$eventLayerIdInput.getValue();

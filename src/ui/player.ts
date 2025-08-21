@@ -230,14 +230,18 @@ class Player {
             const scoreMetrics = context.measureText(text);
             context.fillText(text, 600 -scoreMetrics.width, -400);
 
-            context.font = "60px phigros"
-            const comboNumMetrics = context.measureText(combo.toString());
-            context.fillText(combo.toString(), -comboNumMetrics.width / 2, -400);
+            if (combo >= 3) {
+                
+                context.font = "60px phigros"
+                const comboNumMetrics = context.measureText(combo.toString());
+                context.fillText(combo.toString(), -comboNumMetrics.width / 2, -400);
 
-            context.font = "30px phigros";
-            const comboMetrics = context.measureText(COMBO_TEXT);
-            const h = 36;
-            context.fillText(COMBO_TEXT, -comboMetrics.width / 2, -400 + h);
+                context.font = "20px phigros";
+                const comboMetrics = context.measureText(COMBO_TEXT);
+                const h = 32;
+                context.fillText(COMBO_TEXT, -comboMetrics.width / 2, -400 + h);
+            }
+
 
 
 

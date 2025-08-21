@@ -306,7 +306,7 @@ class MultiNoteAddOperation extends ComplexOperation<NoteAddOperation[]> {
     }
 }
 
-class NoteTimeChangeOperation extends ComplexOperation<[NoteRemoveOperation, NoteValueChangeOperation<"startTime">, NoteAddOperation]> {
+class NoteTimeChangeOperation extends ComplexOperation</*[NoteRemoveOperation, NoteValueChangeOperation<"startTime">, NoteAddOperation]*/any> {
     note: Note
     updatesEditor = true
     needsComboRecount = false;
@@ -316,6 +316,9 @@ class NoteTimeChangeOperation extends ComplexOperation<[NoteRemoveOperation, Not
             new NoteValueChangeOperation(note, "startTime", noteNode.startTime),
             new NoteAddOperation(note, noteNode)
         )
+        if (note.type !== NoteType.hold) {
+            this.subOperations.push(new NoteValueChangeOperation(note, "endTime", noteNode.startTime))
+        }
         if (note.type === NoteType.hold && !TimeCalculator.gt(note.endTime, noteNode.startTime)) {
             this.ineffective = true
         }

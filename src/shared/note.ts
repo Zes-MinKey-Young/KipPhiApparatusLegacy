@@ -78,12 +78,12 @@ class Note {
     constructor(data: NoteDataRPE) {
         this.above = data.above === 1;
         this.alpha = data.alpha ?? 255;
-        this.endTime = data.type === NoteType.hold ? data.endTime : data.startTime;
+        this.endTime = data.type === NoteType.hold ? TimeCalculator.validateIp(data.endTime) : TimeCalculator.validateIp([...data.startTime]);
         this.isFake = Boolean(data.isFake);
         this.positionX = data.positionX;
         this.size = data.size ?? 1.0;
         this.speed = data.speed ?? 1.0;
-        this.startTime = data.startTime;
+        this.startTime = TimeCalculator.validateIp(data.startTime);
         this.type = data.type;
         this.visibleTime = data.visibleTime;
         // @ts-expect-error
@@ -242,7 +242,7 @@ class NoteNode extends NoteNodeLike<NodeType.MIDDLE> implements TwoDirectionNode
     id: number;
     constructor(time: TimeT) {
         super(NodeType.MIDDLE);
-        this.startTime = [...time];
+        this.startTime = TimeCalculator.validateIp([...time]);
         this.notes = [];
         this.id = NoteNode.count++;
     }
@@ -553,7 +553,7 @@ class NNNode extends NNNodeLike<NodeType.MIDDLE> implements TwoDirectionNode {
         super(NodeType.MIDDLE);
         this.noteNodes = []
         this.holdNodes = [];
-        this.startTime = time
+        this.startTime = TimeCalculator.validateIp([...time])
     }
     get endTime() {
         let latest: TimeT = this.startTime;
