@@ -53,6 +53,7 @@ class JudgeLinesEditor extends Z<"div"> {
         this.editor.player.render();
     }
     private orderedLayout() {
+        const old = this.selectedLine;
         this._selectedLine = null; // Set as null first so that the editor is correctly selected
         // 用这个减少回流（内部实现用了文档碎片）
         this.appendMass(() => {
@@ -64,10 +65,11 @@ class JudgeLinesEditor extends Z<"div"> {
                 this.append(editor);
             }
         });
-        this.selectedLine = this.chart.judgeLines[0];
+        this.selectedLine = this.editors.get(old) ? old : this.chart.judgeLines[0];
     }
     private collapseStack: Array<ZCollapseController>;
     private treeLayout() {
+        const old = this.selectedLine;
         this._selectedLine = null;
         this.appendMass(() => {
             this.html("");
@@ -77,7 +79,7 @@ class JudgeLinesEditor extends Z<"div"> {
                 this.addIndentedLineEditor(line, 0);
             }
         });
-        this.selectedLine = this.chart.judgeLines[0];
+        this.selectedLine = this.editors.get(old) ? old : this.chart.judgeLines[0];
     }
     private addIndentedLineEditor(line: JudgeLine, indentLevel: number) {
         const isFather = line.children.size > 0;
@@ -101,6 +103,7 @@ class JudgeLinesEditor extends Z<"div"> {
         }
     }
     private groupedLayout() {
+        const old = this.selectedLine;
         this._selectedLine = null;
         this.appendMass(() => {
             this.html("");
@@ -116,9 +119,9 @@ class JudgeLinesEditor extends Z<"div"> {
                 }
             }
         });
-        this.selectedLine = this.chart.judgeLineGroups[0].judgeLines[0];
+        this.selectedLine = this.editors.get(old) ? old : this.chart.judgeLines[0];
     }
-    registerEditor(editor: JudgeLineEditor) {
+    private registerEditor(editor: JudgeLineEditor) {
         const line = editor.judgeLine;
         this.editors.set(line, editor);
     }

@@ -731,7 +731,6 @@ class EventCurveEditor {
         beats = beats || this.lastBeats || 0;
         this.updateMatrix()
         const {
-            timeRatio, valueRatio,
             context,
             selectionManager,
             matrix
@@ -764,13 +763,12 @@ class EventCurveEditor {
         if (
             line &&
             [EventType.moveX, EventType.moveY, EventType.alpha, EventType.rotate, EventType.speed].includes(this.type)
-            && line.group.isDefault()
+            && !line.group.isDefault()
         ) {
             const group = line.group;
             const parent = this.parentEditorSet
             context.save();
             context.font = "16px Phigros"
-            context.globalAlpha = 0.5;
             const len = group.judgeLines.length;
             for (let i = 0; i < len; i++) {
                 const judgeLine = group.judgeLines[i];
@@ -782,7 +780,9 @@ class EventCurveEditor {
                     continue;
                 }
                 context.strokeStyle = context.fillStyle = `hsl(${i / len * 360}, 80%, 75%)`;
+                context.globalAlpha = 1
                 context.fillText(`${judgeLine.id}`, i * 14, 60);
+                context.globalAlpha = 0.5;
                 this.drawSequence(sequence, valueArray, beats, startBeats, endBeats, matrix);
             }
             context.restore();

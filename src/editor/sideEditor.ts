@@ -563,6 +563,7 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
         this.$father.setValue(judgeLine.father ? judgeLine.father.id + "" : "-1");
         this.$rotatesWithFather.checked = judgeLine.rotatesWithFather;
         this.updateGroups(editor.chart.judgeLineGroups);
+        this.$group.value = this.$group.options.find(option => option.text === judgeLine.group.name);
     }
     updateGroups(groups: JudgeLineGroup[]) {
         this.$group.replaceWithOptions(groups.map(group => {
