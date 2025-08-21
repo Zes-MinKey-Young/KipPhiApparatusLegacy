@@ -55,7 +55,7 @@ async function main() {
     if (!versionInTs || versionInTs[1] !== nextVersion) {
         prompt("version.ts里不是这个呀，我帮你改一下？");
 
-        const target = `const VERSION = "${nextVersion}";\n`
+        const target = `const VERSION = ${nextVersion.replaceAll(".", "")};\n`
         
         await Bun.write(versionTsFile, target);
         console.log(`已将${versionTsFileText}修改为${target}。`)

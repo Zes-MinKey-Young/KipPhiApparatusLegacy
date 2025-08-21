@@ -277,4 +277,7 @@ class JudgeLineGroup {
             this.judgeLines.splice(index, 1);
         }
     }
+    isDefault() {
+        return this.name.toLowerCase() === "default";
+    }
 }

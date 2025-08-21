@@ -445,4 +445,6 @@ Bun.serve({
     }
     }
 })
-console.log("Server started, port: 2460. Press Ctrl+C to exit.")
+
+console.log(`Current Working Directory: ${process.cwd()}`);
+console.log("Server started, port: 2460. Press Ctrl+C to exit.");

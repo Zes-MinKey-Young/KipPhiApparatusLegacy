@@ -415,6 +415,7 @@ class EventCurveEditor {
         this.innerHeight = this.canvas.height - this.padding * 2;
         this.innerWidth = this.canvas.width - this.padding * 2;
         this.context = this.canvas.getContext("2d");
+        this.context.font = "16px Phigros"
 
 
         this.timeSpan = 4
@@ -729,7 +730,6 @@ class EventCurveEditor {
         }
         beats = beats || this.lastBeats || 0;
         this.updateMatrix()
-        const {height, width} = this.canvas;
         const {
             timeRatio, valueRatio,
             context,
@@ -756,10 +756,59 @@ class EventCurveEditor {
         context.restore()
         const startBeats = beats - this.timeSpan / 2;
         const endBeats = beats + this.timeSpan / 2;
-        let previousEndNode: EventEndNode | EventNodeLike<NodeType.HEAD> = this.target.getNodeAt(startBeats < 0 ? 0 : startBeats).previous || this.target.head; // 有点奇怪的操作
-        let previousTime = previousEndNode.type === NodeType.HEAD ? 0: TimeCalculator.toBeats(previousEndNode.time);
         // 该数组用于自动调整网格
         const valueArray = [];
+
+
+        const line = editor.judgeLinesEditor?.selectedLine;
+        if (
+            line &&
+            [EventType.moveX, EventType.moveY, EventType.alpha, EventType.rotate, EventType.speed].includes(this.type)
+            && line.group.isDefault()
+        ) {
+            const group = line.group;
+            const parent = this.parentEditorSet
+            context.save();
+            context.font = "16px Phigros"
+            context.globalAlpha = 0.5;
+            const len = group.judgeLines.length;
+            for (let i = 0; i < len; i++) {
+                const judgeLine = group.judgeLines[i];
+                if (judgeLine === line) {
+                    continue;
+                }
+                const sequence = judgeLine.eventLayers[parent.$layerSelect.value.text][EventType[this.type]];
+                if (!sequence) {
+                    continue;
+                }
+                context.strokeStyle = context.fillStyle = `hsl(${i / len * 360}, 80%, 75%)`;
+                context.fillText(`${judgeLine.id}`, i * 14, 60);
+                this.drawSequence(sequence, valueArray, beats, startBeats, endBeats, matrix);
+            }
+            context.restore();
+        }
+
+
+        this.drawSequence(this.target, valueArray, beats, startBeats, endBeats, matrix);
+
+
+        this.adjust(valueArray);
+        
+        if (this.state === EventCurveEditorState.selectingScope) {
+            const {startingCanvasPoint, canvasPoint} = this;
+            context.save()
+            context.strokeStyle = "#84F";
+            context.strokeRect(startingCanvasPoint.x, startingCanvasPoint.y, canvasPoint.x - startingCanvasPoint.x, canvasPoint.y - startingCanvasPoint.y);
+            context.restore()
+        }
+        this.lastBeats = beats;
+    }
+    drawSequence(sequence: EventNodeSequence, valueArray: number[], beats: number, startBeats: number, endBeats: number, matrix: Matrix) {
+        const {selectionManager, context} = this;
+        const {width} = this.canvas;
+        
+        let previousEndNode: EventEndNode | EventNodeLike<NodeType.HEAD> = sequence.getNodeAt(startBeats < 0 ? 0 : startBeats).previous || sequence.head; // 有点奇怪的操作
+        let previousTime = previousEndNode.type === NodeType.HEAD ? 0: TimeCalculator.toBeats(previousEndNode.time);
         while (previousTime < endBeats) {
             const startNode = previousEndNode.next;
             const endNode = startNode.next;
@@ -846,16 +895,6 @@ class EventCurveEditor {
             }).annotate(context, startX, topY);
 
         }
-        this.adjust(valueArray);
-        
-        if (this.state === EventCurveEditorState.selectingScope) {
-            const {startingCanvasPoint, canvasPoint} = this;
-            context.save()
-            context.strokeStyle = "#84F";
-            context.strokeRect(startingCanvasPoint.x, startingCanvasPoint.y, canvasPoint.x - startingCanvasPoint.x, canvasPoint.y - startingCanvasPoint.y);
-            context.restore()
-        }
-        this.lastBeats = beats;
     }
 
     autoRangeEnabled: boolean = true;

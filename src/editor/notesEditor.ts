@@ -543,15 +543,43 @@ class NotesEditor extends Z<"div"> {
         const width = canvasWidth - padding * 2;
         const height = canvasHeight - padding * 2;
         this.drawCoordination(beats);
-        if (this.targetNNList) {
-            this.drawNNList(this.targetNNList, beats)
-        } else {
+
+        const renderLine = (line: JudgeLine) => {
             // Hold first, so that drag/flicks can be seen
-            for (const lists of [this.target.hnLists, this.target.nnLists]) {
+            for (const lists of [line.hnLists, line.nnLists]) {
                 for (const [_, list] of lists) {
                     this.drawNNList(list, beats)
                 }
             }
+        }
+
+        const line = this.target;
+        const group = line.group;
+        if (
+            !this.targetNNList
+            && !group.isDefault()
+        ) {
+            context.save();
+            context.font = "16px Phigros"
+            context.globalAlpha = 0.5;
+            const len = group.judgeLines.length;
+            for (let i = 0; i < len; i++) {
+                const judgeLine = group.judgeLines[i];
+                if (judgeLine === line) {
+                    continue;
+                }
+                renderLine(judgeLine)
+            }
+            context.restore();
+        }
+
+        
+
+
+        if (this.targetNNList) {
+            this.drawNNList(this.targetNNList, beats)
+        } else {
+            renderLine(this.target);
         }
         // 绘制侧边音符节点标识
         if (DRAWS_NN && this.targetNNList) {
