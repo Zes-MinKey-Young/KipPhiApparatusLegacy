@@ -27,6 +27,25 @@ const rgb2hex = (rgb: RGB) => {
 const hex2rgb = (hex: number): RGB => {
     return [hex >> 16, hex >> 8 & 0xFF, hex & 0xFF]
 }
+
+const notePropTypes = {
+    above: "boolean",
+    alpha: "number",
+    endTime: ["number", "number", "number"],
+    isFake: "boolean",
+    positionX: "number",
+    size: "number",
+    speed: "number",
+    startTime: ["number", "number", "number"],
+    type: "number",
+    visibleTime: "number",
+    visibleBeats: "number",
+    yOffset: "number",
+    tint: ["number", "number", "number"],
+    tintHitEffects: ["number", "number", "number"],
+    judgeSize: "number"
+}
+
 /**
  * 音符
  * Basic element in music game.

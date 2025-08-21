@@ -199,3 +199,21 @@ const extend = <T>(target: Partial<T>, source: Partial<T>): void => {
         }
     });
 }
+
+
+/**
+ * 检查值的类型
+ * @param value 
+ * @param type 为字符串时，用typeof检测，为构造函数时，用instanceof检测，为数组时，识别为元组类型。
+ */
+const checkType = (value: any, type: string | (string | Function)[] | Function) => {
+    if (Array.isArray(type)) {
+        return Array.isArray(value)
+        && value.length === type.length
+        && type.every((t, i) => checkType(value[i], t))
+    } else if (typeof type === "string") {
+        return typeof value === type
+    } else {
+        return value instanceof type
+    }
+}

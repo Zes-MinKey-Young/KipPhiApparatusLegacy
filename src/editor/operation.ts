@@ -140,11 +140,11 @@ class ComplexOperation<T extends Operation[]> extends Operation {
     }
 }
 
-type NoteValueFieldPhiZone = "judgeSize" | "tint" | "tintHitEffects";
+type NotePropNamePhiZone = "judgeSize" | "tint" | "tintHitEffects";
 
-type NoteValueField = "speed" | "type" | "positionX" | "startTime" | "endTime" | "alpha" | "size" | "visibleBeats" | "yOffset" | "above" | "isFake" | NoteValueFieldPhiZone;
+type NotePropName = "speed" | "type" | "positionX" | "startTime" | "endTime" | "alpha" | "size" | "visibleBeats" | "yOffset" | "above" | "isFake" | NotePropNamePhiZone;
 
-class NoteValueChangeOperation<T extends NoteValueField> extends Operation {
+class NotePropChangeOperation<T extends NotePropName> extends Operation {
     field: T;
     note: Note;
     previousValue: Note[T]
@@ -155,6 +155,9 @@ class NoteValueChangeOperation<T extends NoteValueField> extends Operation {
         this.field = field
         this.note = note;
         this.value = value;
+        if (!checkType(value, notePropTypes[field])) {
+            throw new TypeError(`Invalid value for ${field}. Got *${value}*, expected ${notePropTypes[field]}`)
+        }
         this.previousValue = note[field]
         if (field === "isFake") {
             this.needsComboRecount = true;
@@ -172,7 +175,7 @@ class NoteValueChangeOperation<T extends NoteValueField> extends Operation {
     undo() {
         this.note[this.field] = this.previousValue
     }
-    rewrite(operation: NoteValueChangeOperation<T>): boolean {
+    rewrite(operation: NotePropChangeOperation<T>): boolean {
         if (operation.note === this.note && this.field === operation.field) {
             this.value = operation.value;
             this.note[this.field] = operation.value
@@ -313,11 +316,11 @@ class NoteTimeChangeOperation extends ComplexOperation</*[NoteRemoveOperation, N
     constructor(note: Note, noteNode: NoteNode) {
         super(
             new NoteRemoveOperation(note),
-            new NoteValueChangeOperation(note, "startTime", noteNode.startTime),
+            new NotePropChangeOperation(note, "startTime", noteNode.startTime),
             new NoteAddOperation(note, noteNode)
         )
         if (note.type !== NoteType.hold) {
-            this.subOperations.push(new NoteValueChangeOperation(note, "endTime", noteNode.startTime))
+            this.subOperations.push(new NotePropChangeOperation(note, "endTime", noteNode.startTime))
         }
         if (note.type === NoteType.hold && !TimeCalculator.gt(note.endTime, noteNode.startTime)) {
             this.ineffective = true
@@ -343,7 +346,7 @@ class NoteTimeChangeOperation extends ComplexOperation</*[NoteRemoveOperation, N
     }
 }
 
-class HoldEndTimeChangeOperation extends NoteValueChangeOperation<"endTime"> {
+class HoldEndTimeChangeOperation extends NotePropChangeOperation<"endTime"> {
     
     needsComboRecount = false;
     constructor(note: Note, value: TimeT) {
@@ -383,13 +386,13 @@ class HoldEndTimeChangeOperation extends NoteValueChangeOperation<"endTime"> {
 
 
 class NoteSpeedChangeOperation
-extends ComplexOperation<[NoteValueChangeOperation<"speed">, NoteRemoveOperation, NoteAddOperation]> {
+extends ComplexOperation<[NotePropChangeOperation<"speed">, NoteRemoveOperation, NoteAddOperation]> {
     updatesEditor = true
     originalTree: NNList;
     judgeLine: JudgeLine;
     targetTree: NNList
     constructor(note: Note, value: number, line: JudgeLine) {
-        const valueChange = new NoteValueChangeOperation(note, "speed", value);
+        const valueChange = new NotePropChangeOperation(note, "speed", value);
         const tree = line.getNNList(value, note.yOffset, note.type === NoteType.hold, true)
         const node = tree.getNodeOf(note.startTime);
         const removal = new NoteRemoveOperation(note);
@@ -398,13 +401,13 @@ extends ComplexOperation<[NoteValueChangeOperation<"speed">, NoteRemoveOperation
     }
 }
 
-class NoteYOffsetChangeOperation extends ComplexOperation<[NoteValueChangeOperation<"yOffset">, NoteRemoveOperation, NoteAddOperation]> {
+class NoteYOffsetChangeOperation extends ComplexOperation<[NotePropChangeOperation<"yOffset">, NoteRemoveOperation, NoteAddOperation]> {
     updatesEditor = true
     originalTree: NNList;
     judgeLine: JudgeLine;
     targetTree: NNList
     constructor(note: Note, value: number, line: JudgeLine) {
-        const valueChange = new NoteValueChangeOperation(note, "yOffset", value);
+        const valueChange = new NotePropChangeOperation(note, "yOffset", value);
         const tree = line.getNNList(note.speed, value, note.type === NoteType.hold, true)
         const node = tree.getNodeOf(note.startTime);
         const removal = new NoteRemoveOperation(note);
@@ -420,7 +423,7 @@ extends ComplexOperation</*[NoteValueChangeOperation<"type">, NoteInsertOperatio
     updatesEditor = true
     constructor(note: Note, value: number) {
         const isHold = note.type === NoteType.hold
-        const valueChange = new NoteValueChangeOperation(note, "type", value);
+        const valueChange = new NotePropChangeOperation(note, "type", value);
         if (isHold !== (value === NoteType.hold)) {
             const tree = note.parentNode.parentSeq.parentLine.getNNList(note.speed, note.yOffset, !isHold, true)
             const node = tree.getNodeOf(note.startTime);

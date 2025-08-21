@@ -86,42 +86,42 @@ class NoteEditor extends SideEntityEditor<Note> {
             editor.operationList.do(new HoldEndTimeChangeOperation(this.target, t));
         })
         this.$dir.whenClickChange((checked) => {
-            editor.operationList.do(new NoteValueChangeOperation(this.target, "above", checked));
+            editor.operationList.do(new NotePropChangeOperation(this.target, "above", checked));
         })
         this.$real.whenClickChange((checked) => {
-            editor.operationList.do(new NoteValueChangeOperation(this.target, "isFake", !checked));
+            editor.operationList.do(new NotePropChangeOperation(this.target, "isFake", !checked));
         })
         // 这里缺保卫函数
         this.$position.whenValueChange(() => {
-            editor.operationList.do(new NoteValueChangeOperation(this.target, "positionX", this.$position.getNum()))
+            editor.operationList.do(new NotePropChangeOperation(this.target, "positionX", this.$position.getNum()))
         })
         this.$speed.whenValueChange(() => {
             editor.operationList.do(new NoteSpeedChangeOperation(this.target, this.$speed.getNum(), this.target.parentNode.parentSeq.parentLine))
         })
         this.$alpha.whenValueChange(() => {
-            editor.operationList.do(new NoteValueChangeOperation(this.target, "alpha", this.$alpha.getNum()))
+            editor.operationList.do(new NotePropChangeOperation(this.target, "alpha", this.$alpha.getNum()))
         })
         this.$size.whenValueChange(() => {
-            editor.operationList.do(new NoteValueChangeOperation(this.target, "size", this.$size.getNum()))
+            editor.operationList.do(new NotePropChangeOperation(this.target, "size", this.$size.getNum()))
         })
         this.$yOffset.whenValueChange(() => {
             editor.operationList.do(new NoteYOffsetChangeOperation(this.target, this.$yOffset.getNum(), this.target.parentNode.parentSeq.parentLine));
 
         })
         this.$visibleBeats.whenValueChange(() => {
-            editor.operationList.do(new NoteValueChangeOperation(this.target, "visibleBeats", this.$visibleBeats.getNum()));
+            editor.operationList.do(new NotePropChangeOperation(this.target, "visibleBeats", this.$visibleBeats.getNum()));
         });
         this.$delete.onClick(() => {
             editor.operationList.do(new NoteDeleteOperation(this.target));
         });
         this.$tint.whenValueChange((str) => {
-            editor.operationList.do(new NoteValueChangeOperation(this.target, "tint", str === "" ? undefined : parseInt(str, 16)));
+            editor.operationList.do(new NotePropChangeOperation(this.target, "tint", str === "" ? undefined : parseInt(str, 16)));
         });
         this.$tintHitEffect.whenValueChange((str) => {
-            editor.operationList.do(new NoteValueChangeOperation(this.target, "tintHitEffects", str === "" ? undefined : parseInt(str, 16)));
+            editor.operationList.do(new NotePropChangeOperation(this.target, "tintHitEffects", str === "" ? undefined : parseInt(str, 16)));
         });
         this.$judgeSize.whenValueChange(() => {
-            editor.operationList.do(new NoteValueChangeOperation(this.target, "judgeSize", this.$judgeSize.getNum()))
+            editor.operationList.do(new NotePropChangeOperation(this.target, "judgeSize", this.$judgeSize.getNum()))
         });
         this.$setAsDefault.onClick(() => {
             const note = this.target;
@@ -196,33 +196,40 @@ class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
         );
         this.$execute.onClick(() => {
             const code = this.$code.getValue();
-            const prop = this.$propOptionBox.value.text as NoteValueField;
+            const prop = this.$propOptionBox.value.text as NotePropName;
             const fn = new Function("val", "note", "return " + code);
             const sortedNotes = [...this.target].sort((a, b) => TC.gt(a.startTime, b.startTime) ? 1 : -1);
             const generateOp = ({
-                "above":          n => new NoteValueChangeOperation(n, "above",          fn(n.above, n)),
-                "alpha":          n => new NoteValueChangeOperation(n, "alpha",          fn(n.alpha, n)),
+                "above":          n => new NotePropChangeOperation(n, "above",          fn(n.above, n)),
+                "alpha":          n => new NotePropChangeOperation(n, "alpha",          fn(n.alpha, n)),
                 "endTime":        n => new HoldEndTimeChangeOperation(n,                 fn(n.endTime, n)),
-                "isFake":         n => new NoteValueChangeOperation(n, "isFake",         fn(n.isFake, n)),
-                "judgeSize":      n => new NoteValueChangeOperation(n, "judgeSize",      fn(n.judgeSize, n)),
-                "positionX":      n => new NoteValueChangeOperation(n, "positionX",      fn(n.positionX, n)),
-                "size":           n => new NoteValueChangeOperation(n, "size",           fn(n.size, n)),
+                "isFake":         n => new NotePropChangeOperation(n, "isFake",         fn(n.isFake, n)),
+                "judgeSize":      n => new NotePropChangeOperation(n, "judgeSize",      fn(n.judgeSize, n)),
+                "positionX":      n => new NotePropChangeOperation(n, "positionX",      fn(n.positionX, n)),
+                "size":           n => new NotePropChangeOperation(n, "size",           fn(n.size, n)),
                 "speed":          n => new NoteSpeedChangeOperation(n,                   fn(n.speed, n), n.parentNode.parentSeq.parentLine),
                 "startTime":      n => new NoteTimeChangeOperation(n, n.parentNode.parentSeq.getNodeOf(fn(n.startTime, n))),
-                "tint":           n => new NoteValueChangeOperation(n, "tint",           fn(n.tint, n)),
-                "type":           n => new NoteValueChangeOperation(n, "type",           fn(n.type, n)),
-                "visibleBeats":   n => new NoteValueChangeOperation(n, "visibleBeats",   fn(n.visibleBeats, n)),
+                "tint":           n => new NotePropChangeOperation(n, "tint",           fn(n.tint, n)),
+                "type":           n => new NotePropChangeOperation(n, "type",           fn(n.type, n)),
+                "visibleBeats":   n => new NotePropChangeOperation(n, "visibleBeats",   fn(n.visibleBeats, n)),
                 "yOffset":        n => new NoteYOffsetChangeOperation(n,                 fn(n.yOffset, n), n.parentNode.parentSeq.parentLine),
-                "tintHitEffects": n => new NoteValueChangeOperation(n, "tintHitEffects", fn(n.tintHitEffects, n)),
-            } satisfies Record<NoteValueField, (n: Note) => Operation>)[prop];
+                "tintHitEffects": n => new NotePropChangeOperation(n, "tintHitEffects", fn(n.tintHitEffects, n)),
+            } satisfies Record<NotePropName, (n: Note) => Operation>)[prop];
             editor.operationList.do(
                 new ComplexOperation<Operation[]>(
-                    ...sortedNotes.map<Operation>(generateOp)
+                    ...sortedNotes.map<Operation>((n) => {
+                        try {    
+                            return generateOp(n);
+                        } catch (e) {
+                            console.error(e);
+                            notify(`Error: ${e.message}`);
+                        }
+                    })
                 )
             )
         });
         this.$reverse.onClick(() => {
-            editor.operationList.do(new ComplexOperation(...[...this.target].map(n => new NoteValueChangeOperation(n, "positionX", -n.positionX))))
+            editor.operationList.do(new ComplexOperation(...[...this.target].map(n => new NotePropChangeOperation(n, "positionX", -n.positionX))))
         });
         this.$delete.onClick(() => {
             editor.operationList.do(new MultiNoteDeleteOperation(this.target))

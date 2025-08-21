@@ -247,7 +247,7 @@ class NotesEditor extends Z<"div"> {
                         break;
                     }
                     const timeT: TimeT = [this.pointedBeats, this.beatFraction, editor.timeDivisor]
-                    editor.operationList.do(new NoteValueChangeOperation(this.selectedNote, "positionX", this.pointedPositionX))
+                    editor.operationList.do(new NotePropChangeOperation(this.selectedNote, "positionX", this.pointedPositionX))
                     if (this.selectingTail) {
                         editor.operationList.do(new HoldEndTimeChangeOperation(this.selectedNote, timeT))
                     } else {
