@@ -7,4 +7,4 @@ pgrfmwiki/pictures
 *.exe
 server/config.jsonc
 *.pem
-scripts/node_modules
+node_modules

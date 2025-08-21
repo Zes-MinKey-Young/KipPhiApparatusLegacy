@@ -21,12 +21,28 @@ function isAbsolute(p: string): boolean {
     return resolve(p) === p;
 }
 
-
-async function extractZip(zipPath: string, extractTo: string) {
-  const zip = new StreamZip.async({ file: zipPath });
-  await zip.extract(null, extractTo);
-  await zip.close();
+function runCommandAndLogSync(cmd: string[], cwd: string) {
+    console.log(`Running: ${formatCommandForDisplay(cmd)}`)
+    const proc = Bun.spawnSync(cmd, {
+        cwd,
+        stdio: ["ignore", "inherit", "inherit"]
+    });
+    return proc
 }
+
+// 添加一个用于格式化命令显示的函数
+function formatCommandForDisplay(cmd: string[]): string {
+    return cmd.map(arg => {
+        // 如果参数包含特殊字符，则进行转义和引号包围
+        if (/[ \t\n\v\f"'$\\<>|&;(){}\[\]*?]/.test(arg)) {
+            // 转义特殊字符并用双引号包围
+            return `"${arg.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`')}"`;
+        }
+        return arg;
+    }).join(' ');
+}
+
+
 
 
 const defaultValues = {
@@ -35,7 +51,7 @@ const defaultValues = {
     [EventType.rotate]: 0,
     [EventType.alpha]: 0,
     [EventType.speed]: 10
-} as const;
+} as Record<EventType, number>;
 
 async function createChart(music: File, title: string, baseBPM: number): Promise<ChartDataKPA> {
     const metadata = await parseBlob(music);
@@ -160,6 +176,8 @@ const requiresMessage = (cmd: string[]) => cmd.some((token) => token.includes("$
 const commandsRequiresMessage = (cmds: string[][]) => cmds.some((cmd) => requiresMessage(cmd));
 
 function checkRepo(cwd: string) {
+    console.log("Checking repo...");
+    console.log("Running: " + formatCommandForDisplay(pathqueryCmd));
     const proc = Bun.spawnSync(pathqueryCmd, {cwd});
     const out = proc.stdout.toString();
     if (proc.exitCode === 0 && (out === "" || out === ".")) {
@@ -207,9 +225,6 @@ Bun.serve({
                 const title = formData.get("title");
                 const music = formData.get("music");
                 const illustration = formData.get("illustration");
-
-                console.log(illustration);
-                console.log(illustration.exists)
                 const id = formData.get("id");
                 const baseBPM = formData.get("bpm");
                 if (!music || !illustration || !id || !title || !baseBPM
@@ -242,9 +257,12 @@ Bun.serve({
                     Title: title
                 }))
                 if (versionControlEnabled) {
-                    createCmds.forEach(cmd => Bun.spawnSync(generateCommand(cmd, new Date(), "Create " + id), {
-                        cwd: `../Resources/${id}`
-                    }))
+                    createCmds.forEach(
+                        cmd => runCommandAndLogSync(
+                            generateCommand(cmd, new Date(), "Create " + id),
+                            `../Resources/${id}`
+                        )
+                    );
                 }
 
                 console.log(`Created chart ${id}`);
@@ -349,6 +367,13 @@ Bun.serve({
             }
         },
         "/Resources": async (req: BunRequest) => {
+            if (!await exists("../Resources")) {
+                console.log("Resources directory does not exist, creating...");
+                await mkdir("../Resources");
+                return Response.json({
+                    charts: []
+                });
+            }
             const entries = await readdir("../Resources", {withFileTypes: true});
             const subDirs = entries
                 .filter(entry => entry.isDirectory())
@@ -385,9 +410,12 @@ Bun.serve({
             if (versionControlEnabled) {
                 checkOrCreateRepo(cwd);
                 Bun.write(`../Resources/${id}/chart.json`, blob)
-                autosaveCmds.forEach(cmd => Bun.spawnSync(generateCommand(cmd, new Date(), "Autosave"), {
-                    cwd: `../Resources/${id}`
-                }))
+                autosaveCmds.forEach(
+                    cmd => runCommandAndLogSync(
+                        generateCommand(cmd, new Date(), "Autosave"),
+                        `../Resources/${id}`
+                    )
+                )
             } else {
                 Bun.write(`../Resources/${id}/AutoSave ${new Date().toLocaleString().replaceAll("/", "-")}.json`, blob)
             }
@@ -411,10 +439,9 @@ Bun.serve({
                 }
                 checkOrCreateRepo(cwd);
                 for (const cmd of commitCmds) {
-                    const proc = Bun.spawnSync(generateCommand(cmd, new Date(), message as string), {cwd});
-                    console.log(proc.pid, proc.stdout.toString())
+                    const proc = runCommandAndLogSync(generateCommand(cmd, new Date(), message as string), cwd);
                     if (proc.exitCode !== 0) {
-                        return Response.json({message: "Error while committing.\n" + proc.stdout.toString()}, { status: 500 });
+                        return Response.json({message: "Error while committing. See the console."}, { status: 500 });
                     }
                 }
                 return Response.json({message: "Commit successful."});
