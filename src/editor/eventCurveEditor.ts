@@ -788,8 +788,9 @@ class EventCurveEditor {
             context.restore();
         }
 
-
+        selectionManager.setBasePriority(1);
         this.drawSequence(this.target, valueArray, beats, startBeats, endBeats, matrix);
+        selectionManager.setBasePriority(0);
 
 
         this.adjust(valueArray);

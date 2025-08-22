@@ -217,3 +217,11 @@ const checkType = (value: any, type: string | (string | Function)[] | Function) 
         return value instanceof type
     }
 }
+
+const numNoun = (num: number, singular: string, plural: string = singular + "s") => {
+    if (num <= 1) {
+        return `${num} ${singular}`
+    } else {
+        return `${num} ${plural}`
+    }
+}

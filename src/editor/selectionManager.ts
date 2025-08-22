@@ -20,7 +20,8 @@ const pointIsInRect = (x: number, y: number, rectTop: number, rectLeft: number, 
 && rectTop <= y && y <= rectTop + height
 
 class SelectionManager<T> {
-    positions: PositionEntity<T>[]
+    positions: PositionEntity<T>[];
+    private basePriority = 0;
     constructor() {
 
     }
@@ -28,6 +29,7 @@ class SelectionManager<T> {
         this.positions = []
     }
     add(entity: PositionEntity<T>) {
+        entity.priority += this.basePriority
         this.positions.push(entity)
         return {
             annotate: (context: CanvasRenderingContext2D, canvasX: number, canvasY: number) => {
@@ -94,6 +96,7 @@ class SelectionManager<T> {
             }
         })
     }
+    setBasePriority(priority: number) {
+        this.basePriority = priority;
     }
-
-// ** TODO: Charting time stats
+}

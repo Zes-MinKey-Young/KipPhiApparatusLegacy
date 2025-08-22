@@ -573,7 +573,9 @@ class NotesEditor extends Z<"div"> {
         if (this.targetNNList) {
             this.drawNNList(this.targetNNList, beats)
         } else {
+            this.selectionManager.setBasePriority(1);
             renderLine(this.target);
+            this.selectionManager.setBasePriority(0);
         }
         // 绘制侧边音符节点标识
         if (DRAWS_NN && this.targetNNList) {

@@ -58,7 +58,7 @@ class NoteEditor extends SideEntityEditor<Note> {
     $delete        = new ZButton("Delete").addClass("destructive");
     constructor() {
         super()
-        this.$title.text("Note")
+        this.$title.text("Note (NULL)")
         this.$body.append(
             $("span").text("speed"), this.$speed,
             $("span").text("time"),
@@ -141,8 +141,11 @@ class NoteEditor extends SideEntityEditor<Note> {
     update() {
         const note = this.target
         if (!note) {
+            this.$title.text("Note (NULL)")
             return;
         }
+        const nnList = note.parentNode.parentSeq;
+        this.$title.text(`Note (from #${nnList.parentLine.id}.${nnList.id})`);
         this.$time.setValue(note.startTime);
         if (note.type === NoteType.hold) {
             this.$endTime.setValue(note.endTime);
@@ -195,6 +198,9 @@ class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
     readonly $execute = new ZButton("Execute").addClass("progressive");
     readonly $fillDensityInput = new ZFractionInput();
     readonly $fill             = new ZButton("Fill").addClass("progressive");
+    readonly $warning          = $("span")
+                                .css("gridColumn", "1 / 3")
+                                .css("color", "yellow");
 
     constructor() {
         super();
@@ -212,7 +218,8 @@ class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
                 ),
             $("div").append(this.$code, this.$execute),
             $("span").text("Fill each neighbors with step: "),
-            $("div").addClass("flex-row").append(this.$fillDensityInput, this.$fill)
+            $("div").addClass("flex-row").append(this.$fillDensityInput, this.$fill),
+            this.$warning
         );
         this.$fillDensityInput.setValue([0, 1, 4])
         this.$execute.onClick(() => {
@@ -292,9 +299,18 @@ class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
         });
     }
     update(): void {
-
+        const count = this.target.size;
+        const judgeLineCount = new Set([...this.target].map(n => n.parentNode.parentSeq.parentLine)).size;
+        this.$title.text(`Multi Notes (${numNoun(count, "Note")} from ${numNoun(judgeLineCount, "JudgeLine")})`);
+        if (judgeLineCount > 1) {
+            this.$warning.text("Warning: The selected notes come from different lines, but `Fill` will only fill the selected line.")
+        } else {
+            this.$warning.text("");
+        }
     }
 }
+
+
 
 class MultiNodeEditor extends SideEntityEditor<Set<EventStartNode>> {
     readonly $reverse       = new ZButton("Delete").addClass("destructive");
@@ -378,7 +394,7 @@ class EventEditor extends SideEntityEditor<EventStartNode | EventEndNode> {
     $radioTabs: ZRadioTabs;
     constructor() {
         super()
-        this.$title.text("Event")
+        this.$title.text("EventNode (NULL)")
         this.addClass("event-editor")
         this.$normalOuter.append(
             this.$easing,
@@ -474,8 +490,12 @@ class EventEditor extends SideEntityEditor<EventStartNode | EventEndNode> {
     update(): void {
         const eventNode = this.target;
         if (!eventNode) {
+            this.$title.text("EventNode (NULL)")
             return;
         }
+        const isBPM = eventNode instanceof BPMStartNode || eventNode instanceof BPMEndNode
+        const isStart = eventNode instanceof EventStartNode
+        this.$title.text(`${isBPM ? "BPM" : "Event"}${isStart ? "Start" : "End"}Node (from ${eventNode.parentSeq.id})`);
         this.$time.setValue(eventNode.time);
         this.$value.setValue(eventNode.value + "");
         if (eventNode.innerEasing instanceof NormalEasing) {
