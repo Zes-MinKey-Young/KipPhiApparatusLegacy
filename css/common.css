@@ -171,3 +171,8 @@ progress {
     background-position: center;
     background-size: cover;
 }
+
+textarea {
+    font-family: 'Consolas', monospace, serif;
+    font-size: 1em;
+}

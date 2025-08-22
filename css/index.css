@@ -216,29 +216,29 @@ canvas#player {
 .notification {
     background-color: #CCC;
     color: #222;
-    padding: 1em;
-    border-radius: 0.25em;
+    padding: 0.2em;
+    border-radius: 0.2em;
     position: fixed;
     font-size: large;
     left: 100%;
-    width: 30%;
-    height: 10%;
+    width: 20%;
+    height: 4%;
     transition: 0.7s ease-out left, 0.7s ease-out top;
     border: 2px solid #444;
 }
 .notification:last-child {
-    top: 10%
+    top: 4%
 }
 .notification:nth-last-child(2) {
-    top: 25%
+    top: 9%
 }
 .notification:nth-last-child(3) {
-    top: 40%
+    top: 14%
 }
 
 
 .notification.fade-in {
-    left: 50%
+    left: 75%
 }
 
 .tips-label {
