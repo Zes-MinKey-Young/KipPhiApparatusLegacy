@@ -2,13 +2,55 @@
 // 为此我问了通义灵码半天，不失所望
 
 import { type BunRequest } from 'bun';
-import { resolve, relative } from 'path';
+import { resolve, relative, join } from 'path';
+import { createWriteStream } from 'fs';
 import { parseBlob } from 'music-metadata';
 import { mkdir, exists, readdir } from 'fs/promises';
 import { parse, type ParseError } from 'jsonc-parser';
 import { parse as parseRPEMetadata } from "./RPEInfoParser.ts";
 import StreamZip from 'node-stream-zip';
 import { EventType, NoteType} from '../dist/chartTypes.d.ts'
+
+
+// 在程序开始时设置日志管道
+function setupLogPiping() {
+    const logFilePath = join(process.cwd(), "server.log");
+    const logStream = createWriteStream(logFilePath, { flags: 'a' });
+    
+    // 将 stdout 和 stderr 同时写入文件和控制台
+    const originalStdoutWrite = process.stdout.write;
+    const originalStderrWrite = process.stderr.write;
+    
+    process.stdout.write = function(chunk: string, ...args: any[]) {
+        // 写入控制台
+        originalStdoutWrite.call(process.stdout, chunk, ...args);
+        // 写入日志文件
+        logStream.write(`[${new Date().toISOString()}] ` + chunk);
+        return true;
+    };
+    
+    process.stderr.write = function(chunk: string, ...args: any[]) {
+        // 写入控制台
+        originalStderrWrite.call(process.stderr, chunk, ...args);
+        // 写入日志文件
+        logStream.write(`[${new Date().toISOString()}] ` + chunk);
+        return true;
+    };
+    
+    // 捕获未捕获的异常
+    process.on('uncaughtException', (err) => {
+        const errorMessage = `[${new Date().toISOString()}] UNCAUGHT EXCEPTION: ${err.stack || err.message}\n`;
+        process.stderr.write(errorMessage);
+    });
+    
+    process.on('unhandledRejection', (reason, promise) => {
+        const errorMessage = `[${new Date().toISOString()}] UNHANDLED REJECTION: ${reason}\n`;
+        process.stderr.write(errorMessage);
+    });
+}
+
+// 在程序开始时调用
+setupLogPiping();
 
 
 function isSubPath(targetPath: string, parentPath: string): boolean {
@@ -159,7 +201,8 @@ const cert = configData.cert;
 const generateCommand = (cmdTemplate: string[], time: Date, message: string) => {
     return cmdTemplate.map(
         (token) => token
-            .replaceAll("$time", time.toLocaleString().replaceAll("/", "-"))
+                                                       // 防止路径解析错误
+            .replaceAll("$time", time.toLocaleString().replaceAll("/", "-").replaceAll(":", "-"))
             .replaceAll("$message", message)
     )
 }
@@ -419,6 +462,8 @@ Bun.serve({
             } else {
                 Bun.write(`../Resources/${id}/AutoSave ${new Date().toLocaleString().replaceAll("/", "-")}.json`, blob)
             }
+
+            throw new Error("测试一下，看看CMD会不会崩")
                 
 
             return new Response("OK");

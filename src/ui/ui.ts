@@ -886,8 +886,9 @@ function notify(message: string) {
 class ZTextArea extends Z<"textarea"> {
     constructor(rows: number = 20, cols: number = 40) {
         super("textarea")
-        this.attr("rows", rows + "")
-        this.attr("cols", cols + "")
+        this.attr("rows", rows + "");
+        this.attr("cols", cols + "");
+        this.attr("spellcheck", "false");
     }
     getValue() {
         return this.element.value
