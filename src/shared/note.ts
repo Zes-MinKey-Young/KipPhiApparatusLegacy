@@ -455,11 +455,15 @@ class NNList {
      * @returns 
      */
     getNodeOf(time: TimeT) {
-        const node = this.getNodeAt(TimeCalculator.toBeats(time), false)
+        let node = this.getNodeAt(TimeCalculator.toBeats(time), false)
                     .previous;
 
 
-        const isEqual = node.type !== NodeType.HEAD && TimeCalculator.eq((node as NoteNode).startTime, time)
+        let isEqual = node.type !== NodeType.HEAD && TimeCalculator.eq((node as NoteNode).startTime, time)
+        if (node.next.type !== NodeType.TAIL && TimeCalculator.eq((node.next as NoteNode).startTime, time)) {
+            isEqual = true;
+            node = node.next;
+        }
 
         if (!isEqual) {
             const newNode = new NoteNode(time);

@@ -63,6 +63,7 @@ class OperationList extends EventTarget {
                 
             const lastOp = this.operations[this.operations.length - 1]
             if (operation.constructor === lastOp.constructor) {
+                // 返回值指示是否重写成功
                 if (lastOp.rewrite(operation)) {
                     this.processFlags(operation)
                     return;
@@ -126,7 +127,9 @@ class ComplexOperation<T extends Operation[]> extends Operation {
         const length = this.length
         for (let i = 0; i < length; i++) {
             const op = this.subOperations[i]
-            if (op.ineffective) { continue; }
+            if (op.ineffective) {
+                continue;
+            }
             op.do(chart)
         }
     }
@@ -167,9 +170,6 @@ class NotePropChangeOperation<T extends NotePropName> extends Operation {
         }
     }
     do() {
-        if (this.field === "endTime") {
-            console.log("endTime")
-        }
         this.note[this.field] = this.value
     }
     undo() {
@@ -309,19 +309,27 @@ class MultiNoteAddOperation extends ComplexOperation<NoteAddOperation[]> {
     }
 }
 
-class NoteTimeChangeOperation extends ComplexOperation</*[NoteRemoveOperation, NoteValueChangeOperation<"startTime">, NoteAddOperation]*/any> {
+class NoteTimeChangeOperation extends ComplexOperation<
+[NoteRemoveOperation, NotePropChangeOperation<"startTime">, NoteAddOperation]
+| [NoteRemoveOperation, NotePropChangeOperation<"startTime">, NoteAddOperation, NotePropChangeOperation<"endTime">]> {
     note: Note
-    updatesEditor = true
-    needsComboRecount = false;
     constructor(note: Note, noteNode: NoteNode) {
-        super(
-            new NoteRemoveOperation(note),
-            new NotePropChangeOperation(note, "startTime", noteNode.startTime),
-            new NoteAddOperation(note, noteNode)
-        )
-        if (note.type !== NoteType.hold) {
-            this.subOperations.push(new NotePropChangeOperation(note, "endTime", noteNode.startTime))
+        if (note.type === NoteType.hold) {
+            super(
+                new NoteRemoveOperation(note),
+                new NotePropChangeOperation(note, "startTime", noteNode.startTime),
+                new NoteAddOperation(note, noteNode)
+            );
+        } else {
+            super(
+                new NoteRemoveOperation(note),
+                new NotePropChangeOperation(note, "startTime", noteNode.startTime),
+                new NoteAddOperation(note, noteNode),
+                new NotePropChangeOperation(note, "endTime", noteNode.startTime)
+            )
         }
+        this.updatesEditor = true
+        this.needsComboRecount = false;
         if (note.type === NoteType.hold && !TimeCalculator.gt(note.endTime, noteNode.startTime)) {
             this.ineffective = true
         }
@@ -330,6 +338,7 @@ class NoteTimeChangeOperation extends ComplexOperation</*[NoteRemoveOperation, N
             this.ineffective = true
         }
     }
+    // 真的是巨坑啊
     rewrite(operation: NoteTimeChangeOperation): boolean {
         if (operation.note === this.note) {
             this.subOperations[0] = new NoteRemoveOperation(this.note)
@@ -340,6 +349,15 @@ class NoteTimeChangeOperation extends ComplexOperation</*[NoteRemoveOperation, N
             this.subOperations[1].do()
             this.subOperations[2].noteNode = operation.subOperations[2].noteNode
             this.subOperations[2].do()
+            if (operation.subOperations[3]) {
+                if (this.subOperations[3]) {
+                    this.subOperations[3].value = operation.subOperations[3].value;
+                    this.subOperations[3].do();
+                } else {
+                    this.subOperations.push(operation.subOperations[3]);
+                    this.subOperations[3].do();
+                }
+            }
             return true;
         }
         return false
@@ -419,8 +437,6 @@ class NoteYOffsetChangeOperation extends ComplexOperation<[NotePropChangeOperati
 
 class NoteTypeChangeOperation 
 extends ComplexOperation</*[NoteValueChangeOperation<"type">, NoteInsertOperation]*/ any> {
-    
-    updatesEditor = true
     constructor(note: Note, value: number) {
         const isHold = note.type === NoteType.hold
         const valueChange = new NotePropChangeOperation(note, "type", value);
@@ -433,6 +449,7 @@ extends ComplexOperation</*[NoteValueChangeOperation<"type">, NoteInsertOperatio
         } else {
             super(valueChange);
         }
+        this.updatesEditor = true;
     }
 }
 

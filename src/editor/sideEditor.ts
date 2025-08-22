@@ -166,6 +166,23 @@ class NoteEditor extends SideEntityEditor<Note> {
     }
 }
 
+/**
+ * 多音符编辑的辅助函数
+ * @param note 原封不动传入音符
+ * @param easingFunc 缓动函数（ease开头）
+ * @param start 开始点
+ * @param end 结束点
+ * @returns
+ */
+const fillCurve = (note: Note, easingFunc: (t: number) => number, start: [TimeT, number], end: [TimeT, number]): number => {
+    const startBeats = TimeCalculator.toBeats(start[0]);
+    const endBeats = TimeCalculator.toBeats(end[0]);
+    const timeDelta = endBeats - startBeats;
+    const valueDelta = end[1] - start[1];
+    return easingFunc((TimeCalculator.toBeats(note.startTime) - startBeats) / timeDelta) * valueDelta + start[1];
+}
+
+
 class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
     readonly $reverse = new ZButton("Reverse");
     readonly $delete = new ZButton("Delete").addClass("destructive");
@@ -175,7 +192,9 @@ class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
         "visibleBeats", "yOffset"
     ].map((n) => new BoxOption(n)));
     readonly $code = new ZTextArea();
-    readonly $execute = new ZButton("Execute");
+    readonly $execute = new ZButton("Execute").addClass("progressive");
+    readonly $fillDensityInput = new ZFractionInput();
+    readonly $fill             = new ZButton("Fill").addClass("progressive");
 
     constructor() {
         super();
@@ -191,9 +210,11 @@ class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
                     this.$propOptionBox,
                     $("span").text(" = ")
                 ),
-            $("div").append(this.$code, this.$execute)
-
+            $("div").append(this.$code, this.$execute),
+            $("span").text("Fill each neighbors with step: "),
+            $("div").addClass("flex-row").append(this.$fillDensityInput, this.$fill)
         );
+        this.$fillDensityInput.setValue([0, 1, 4])
         this.$execute.onClick(() => {
             const code = this.$code.getValue();
             const prop = this.$propOptionBox.value.text as NotePropName;
@@ -228,6 +249,41 @@ class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
                 )
             )
         });
+        this.$fill.onClick(() => {
+            const step = this.$fillDensityInput.getValue();
+            try {
+                TimeCalculator.validateIp(step);
+            } catch (e) {
+                notify(e.message);
+                return;
+            }
+            if (TimeCalculator.toBeats(step) <= 0) {
+                notify("Step must be positive");
+                return;
+            }
+            const sortedNotes = [...this.target].sort((a, b) => TC.gt(a.startTime, b.startTime) ? 1 : -1);
+            const toBeAdded = [];
+            const fill = (note1: Note, note2: Note) => {
+                const startTime = note1.startTime;
+                const endTime = note2.startTime;
+                const delta = TC.validateIp(TC.sub(endTime, startTime));
+                const positionDelta = note2.positionX - note1.positionX;
+                for (let offset = step; TC.lt(offset, delta); offset = TC.validateIp(TC.add(offset, step))) {
+                    const note = note1.clone(offset);
+                    note.positionX = (TC.toBeats(offset) / TC.toBeats(delta)) * positionDelta + note1.positionX;
+                    toBeAdded.push(note);
+                }
+            }
+            const len = sortedNotes.length;
+            for (let i = 0; i < len - 1; i++) {
+                console.log(i)
+                const note1 = sortedNotes[i];
+                const note2 = sortedNotes[i + 1];
+                fill(note1, note2);
+            }
+            editor.operationList.do(new MultiNoteAddOperation(toBeAdded, editor.judgeLinesEditor.selectedLine));
+
+        })
         this.$reverse.onClick(() => {
             editor.operationList.do(new ComplexOperation(...[...this.target].map(n => new NotePropChangeOperation(n, "positionX", -n.positionX))))
         });

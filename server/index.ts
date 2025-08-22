@@ -460,12 +460,9 @@ Bun.serve({
                     )
                 )
             } else {
-                Bun.write(`../Resources/${id}/AutoSave ${new Date().toLocaleString().replaceAll("/", "-")}.json`, blob)
+                Bun.write(`../Resources/${id}/AutoSave ${new Date().toLocaleString().replaceAll("/", "-").replaceAll(":", "-")}.json`, blob)
             }
-
-            throw new Error("测试一下，看看CMD会不会崩")
-                
-
+            
             return new Response("OK");
         },
         "/commit/:id":  async (req: BunRequest) => {
