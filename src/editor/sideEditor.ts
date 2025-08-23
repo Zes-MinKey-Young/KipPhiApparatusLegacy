@@ -40,6 +40,7 @@ class NoteEditor extends SideEntityEditor<Note> {
             editor.operationList.do(new NoteTypeChangeOperation(this.target, NoteType[v]))
         }));
 
+    $warning       = $("span").addClass("side-editor-warning");
     $time          = new ZFractionInput();;
     $endTime       = new ZFractionInput();;
     $type          = new ZDropdownOptionBox(this.noteTypeOptions);
@@ -60,6 +61,7 @@ class NoteEditor extends SideEntityEditor<Note> {
         super()
         this.$title.text("Note (NULL)")
         this.$body.append(
+            this.$warning,
             $("span").text("speed"), this.$speed,
             $("span").text("time"),
             $("div").addClass("flex-row").append(this.$time, $("span").text(" ~ "), this.$endTime),
@@ -145,6 +147,11 @@ class NoteEditor extends SideEntityEditor<Note> {
             return;
         }
         const nnList = note.parentNode.parentSeq;
+        if (note.parentNode.parentSeq.parentLine !== editor.judgeLinesEditor.selectedLine) {
+            this.$warning.text("This Note doe not belong to the selected JudgeLine.")
+        } else {
+            this.$warning.text("");
+        }
         this.$title.text(`Note (from #${nnList.parentLine.id}.${nnList.id})`);
         this.$time.setValue(note.startTime);
         if (note.type === NoteType.hold) {
@@ -187,20 +194,18 @@ const fillCurve = (note: Note, easingFunc: (t: number) => number, start: [TimeT,
 
 
 class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
-    readonly $reverse = new ZButton("Reverse");
-    readonly $delete = new ZButton("Delete").addClass("destructive");
-    readonly $propOptionBox = new ZDropdownOptionBox([
+    readonly $reverse          = new ZButton("Reverse");
+    readonly $delete           = new ZButton("Delete").addClass("destructive");
+    readonly $propOptionBox    = new ZDropdownOptionBox([
         "above", "alpha", "endTime", "isFake", "judgeSize", "positionX",
         "size", "speed", "startTime", "tint", "tintHitEffects", "type",
         "visibleBeats", "yOffset"
     ].map((n) => new BoxOption(n)));
-    readonly $code = new ZTextArea();
-    readonly $execute = new ZButton("Execute").addClass("progressive");
+    readonly $code             = new ZTextArea();
+    readonly $execute          = new ZButton("Execute").addClass("progressive");
     readonly $fillDensityInput = new ZFractionInput();
     readonly $fill             = new ZButton("Fill").addClass("progressive");
-    readonly $warning          = $("span")
-                                .css("gridColumn", "1 / 3")
-                                .css("color", "yellow");
+    readonly $fillWarning      = $("span").addClass("side-editor-warning")
 
     constructor() {
         super();
@@ -219,7 +224,7 @@ class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
             $("div").append(this.$code, this.$execute),
             $("span").text("Fill each neighbors with step: "),
             $("div").addClass("flex-row").append(this.$fillDensityInput, this.$fill),
-            this.$warning
+            this.$fillWarning
         );
         this.$fillDensityInput.setValue([0, 1, 4])
         this.$execute.onClick(() => {
@@ -303,9 +308,9 @@ class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
         const judgeLineCount = new Set([...this.target].map(n => n.parentNode.parentSeq.parentLine)).size;
         this.$title.text(`Multi Notes (${numNoun(count, "Note")} from ${numNoun(judgeLineCount, "JudgeLine")})`);
         if (judgeLineCount > 1) {
-            this.$warning.text("Warning: The selected notes come from different lines, but `Fill` will only fill the selected line.")
+            this.$fillWarning.text("Warning: The selected notes come from different lines, but `Fill` will only fill the selected line.")
         } else {
-            this.$warning.text("");
+            this.$fillWarning.text("");
         }
     }
 }
@@ -313,8 +318,8 @@ class MultiNoteEditor extends SideEntityEditor<Set<Note>> {
 
 
 class MultiNodeEditor extends SideEntityEditor<Set<EventStartNode>> {
-    readonly $reverse       = new ZButton("Delete").addClass("destructive");
-    readonly $delete        = new ZButton("Reverse");
+    readonly $reverse           = new ZButton("Reverse");
+    readonly $delete            = new ZButton("Delete").addClass("destructive");
     readonly $startEndOptionBox = new ZDropdownOptionBox([
         "start",
         "end"
@@ -377,19 +382,25 @@ class MultiNodeEditor extends SideEntityEditor<Set<EventStartNode>> {
 } 
 
 class EventEditor extends SideEntityEditor<EventStartNode | EventEndNode> {
-
+    
+    $warning        = $("span").addClass("side-editor-warning");
     $time           = new ZFractionInput();
     $value          = new ZInputBox();
+
     $normalOuter    = $("div");
     $normalLeft     = new ZInputBox().attr("placeholder", "left").setValue("0.0");
     $normalRight    = new ZInputBox().attr("placeholder", "right").setValue("1.0");
     $easing         = new ZEasingBox();
+
     $templateOuter  = $("div");
     $templateEasing = new ZInputBox().addClass("template-easing-box");
     $templateLeft   = new ZInputBox().attr("placeholder", "left").setValue("0.0");
     $templateRight  = new ZInputBox().attr("placeholder", "right").setValue("1.0");
+
     $parametric     = new ZInputBox();
+
     $bezierEditor   = new BezierEditor(window.innerWidth * 0.2);
+
     $delete: ZButton;
     $radioTabs: ZRadioTabs;
     constructor() {
@@ -410,6 +421,7 @@ class EventEditor extends SideEntityEditor<EventStartNode | EventEndNode> {
         this.$delete = new ZButton("delete").addClass("destructive")
             .onClick(() => editor.operationList.do(new EventNodePairRemoveOperation(EventNode.getEndStart(this.target)[1])));
         this.$body.append(
+            this.$warning,
             $("span").text("time"), this.$time,
             $("span").text("value"), this.$value,
             this.$radioTabs,
@@ -493,6 +505,11 @@ class EventEditor extends SideEntityEditor<EventStartNode | EventEndNode> {
             this.$title.text("EventNode (NULL)")
             return;
         }
+        if (eventNode.parentSeq !== editor.eventCurveEditors.selectedEditor.target) {
+            this.$warning.text("This EventNode does not belong to the selected EventNodeSequence.");
+        } else {
+            this.$warning.text("");
+        }
         const isBPM = eventNode instanceof BPMStartNode || eventNode instanceof BPMEndNode
         const isStart = eventNode instanceof EventStartNode
         this.$title.text(`${isBPM ? "BPM" : "Event"}${isStart ? "Start" : "End"}Node (from ${eventNode.parentSeq.id})`);
@@ -552,7 +569,7 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
         );
         this.$father.whenValueChange((content) => {
             if (!this.target) {
-                notify("GC了");
+                notify("The target of this editor has been garbage-collected");
                 return;
             }
             if (content === "-1") {
@@ -577,7 +594,7 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
         });
         this.$createGroup.onClick(() => {
             if (!this.target) {
-                notify("GC了");
+                notify("The target of this editor has been garbage-collected");
                 return;
             }
             const name = this.$newGroup.getValue().trim();
@@ -608,7 +625,7 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
         });
         this.$del.onClick(() => {
             if (!this.target) {
-                notify("GC了");
+                notify("The target of this editor has been garbage-collected");
                 editor.judgeLinesEditor.reflow();
                 return;
             }
@@ -617,27 +634,27 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
         this.$setAsBindNote.onClick(() => {
             const judgeLine = this.target;
             if (!judgeLine) {
-                notify("GC了");
+                notify("The target of this editor has been garbage-collected");
             }
             const seq = judgeLine.eventLayers[0].speed;
             if (seq.head.next === seq.tail.previous) {
                 editor.operationList.do(new EventNodeValueChangeOperation(seq.head.next, 0));
-                notify(`已将#${judgeLine.id}.0.speed唯一的事件节点设为0值`);
+                notify(`Set the only EventNode of #${judgeLine.id}.0.speed as 0`);
             } else if (seq.head.next.next.next === seq.tail.previous) {
                 editor.operationList.do(new ComplexOperation(
                     new EventNodeValueChangeOperation(seq.head.next, 0),
                     new EventNodeValueChangeOperation(seq.head.next.next as EventEndNode, 0),
                     new EventNodeValueChangeOperation(seq.head.next.next.next as EventStartNode, 0)
                 ));
-                notify(`已将#${judgeLine.id}.0.speed唯三的事件节点设为0值`);
+                notify(`Set the only 3 EventNodes of #${judgeLine.id}.0.speed as 0`);
             } else {
-                notify("无法设为可绑线");
+                notify("Unable to set the speed as 0 for there have been more than 3 EventNodes");
                 return;
             }
             const ySeq = judgeLine.eventLayers[0].moveY;
             if (ySeq.head.next === seq.tail.previous) {
                 editor.operationList.do(new EventNodeValueChangeOperation(seq.head.next, 2000));
-                notify(`已将#${judgeLine.id}.0.moveY唯一的事件节点设为2000值`)
+                notify(`Set the only EventNode of #${judgeLine.id}.0.moveY as 2000`)
             } else if (ySeq.head.next.next.next === ySeq.tail.previous) {
                 
                 editor.operationList.do(new ComplexOperation(
@@ -645,9 +662,9 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
                     new EventNodeValueChangeOperation(ySeq.head.next.next as EventEndNode, 2000),
                     new EventNodeValueChangeOperation(ySeq.head.next.next.next as EventStartNode, 2000)
                 ));
-                notify(`已将#${judgeLine.id}.0.moveY唯三的事件节点设为2000值`)
+                notify(`Set the only 3 EventNodes of #${judgeLine.id}.0.moveY as 2000`)
             } else {
-                notify("无法设置2000值");
+                notify("Unable to set the y as 2000 for there have been more than 3 EventNodes");
             }
         });
         this.$newEventSeqName.whenValueChange((name) => {

@@ -454,7 +454,7 @@ class NNList {
      * @param time 
      * @returns 
      */
-    getNodeOf(time: TimeT) {
+    getNodeOf(time: TimeT): NoteNode {
         let node = this.getNodeAt(TimeCalculator.toBeats(time), false)
                     .previous;
 

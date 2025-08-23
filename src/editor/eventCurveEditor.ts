@@ -1,3 +1,5 @@
+const SCOPING_COLOR = "#FAE";
+
 
 const eventTypeMap = [
     { // moveX
@@ -95,6 +97,7 @@ class EventCurveEditors extends Z<"div"> {
         this.$rangeInput.whenValueChange((content) => {
             if (content === "auto" || content === "") {
                 this.selectedEditor.autoRangeEnabled = true;
+                return;
             }
             const parts = content.split(",");
             if (parts.length !== 2) {
@@ -702,6 +705,8 @@ class EventCurveEditor {
             context.fillText(value + "", -innerWidth / 2, positionY)
         }
         context.strokeStyle = rgb(...this.timeGridColor)
+
+        context.lineWidth = 3;
         
         const stopBeats = Math.ceil((beats + this.timeSpan / 2) / timeGridSpan) * timeGridSpan;
         const startBeats = Math.ceil((beats - this.timeSpan / 2) / timeGridSpan - 1) * timeGridSpan;
@@ -798,7 +803,8 @@ class EventCurveEditor {
         if (this.state === EventCurveEditorState.selectingScope) {
             const {startingCanvasPoint, canvasPoint} = this;
             context.save()
-            context.strokeStyle = "#84F";
+            context.lineWidth = 3;
+            context.strokeStyle = SCOPING_COLOR;
             context.strokeRect(startingCanvasPoint.x, startingCanvasPoint.y, canvasPoint.x - startingCanvasPoint.x, canvasPoint.y - startingCanvasPoint.y);
             context.restore()
         }
@@ -951,13 +957,18 @@ class EventCurveEditor {
                 valueGridSpan = v;
             }
         }
+        console.log("compute 1")
         valueGridSpan = divideOrMul(valueGridSpan, 10 / (lengthOf(this.valueRange) / valueGridSpan));
+        
+        console.log("compute 2")
         if (distinctValueCount > 10) {
             this.attachableValues = generateAttachable([valueGridSpan, 0], this.valueRange);
         } else {
                 
             this.attachableValues = Array.from(new Set([...generateAttachable([valueGridSpan, 0], this.valueRange), ...values])).sort((a, b) => a - b);
         }
+        
+        console.log("compute 3")
     }
     changeTarget(line: JudgeLine, index: number) {
         if (this.type === EventType.easing) {

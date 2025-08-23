@@ -3,19 +3,6 @@ const COLOR_1 = "#66ccff"
 const COLOR_2 ="#ffcc66"
 
 
-const HEAD = 1;
-const BODY = 2;
-const TAIL = 3;
-/**
- * 用于Note编辑器记录其中的音符贴图位置
- */
-type NotePosition = {
-    note: Note,
-    x: number,
-    y: number,
-    height: number,
-    type: 1 | 2 | 3
-}
 
 
 enum NotesEditorState {
@@ -72,24 +59,27 @@ class NotesEditor extends Z<"div"> {
     selectState: SelectState;
     wasEditing: boolean;
     pointedPositionX: number;
-    pointedBeats: number;
-    beatFraction: number
     noteType: NoteType
-    noteAbove: boolean
+    noteAbove:         boolean = true;
+
+    attachableTimes: number[] = [];
+    timeMap: Map<number, TimeT> = new Map();
+    pointedTime: TimeT;
 
 
     drawn: boolean;
 
     lastBeats: number;
 
-    $optionBox: ZEditableDropdownOptionBox;
-    $typeOption: ZDropdownOptionBox;
-    $noteAboveOption: ZDropdownOptionBox;
-    $selectOption: ZDropdownOptionBox;
-    $copyButton: ZButton;
-    $pasteButton: ZButton;
-    $editButton: ZSwitch;
-    allOption: EditableBoxOption
+    readonly allOption = new EditableBoxOption("*", (_s, t) => {}, () => this.targetNNList = null, () => undefined, false)
+    readonly $listOption      = new ZEditableDropdownOptionBox([this.allOption]);
+    readonly $typeOption      = new ZDropdownOptionBox(["tap", "hold", "flick", "drag"].map((v) => new BoxOption(v)));
+    readonly $noteAboveSwitch = new ZSwitch("below", "above");
+    readonly $selectOption    = new ZDropdownOptionBox(["none", "extend", "replace", "exclude"].map(v => new BoxOption(v)))
+    readonly $copyButton      = new ZButton("Copy")
+    readonly $pasteButton     = new ZButton("Paste")
+    readonly $editButton      = new ZSwitch("Edit")
+    readonly $timeSpanInput   = new ZInputBox("2").attr("placeholder", "TimeSpan").attr("size", "3");
     mouseIn: boolean;
 
     defaultConfig = {
@@ -100,6 +90,7 @@ class NotesEditor extends Z<"div"> {
         absoluteYOffset: 0,
         visibleBeats: undefined as number
     }
+
     
     get target() {
         return this._target
@@ -127,12 +118,12 @@ class NotesEditor extends Z<"div"> {
             }
 
         }
-        this.$optionBox.replaceWithOptions(options)
+        this.$listOption.replaceWithOptions(options)
         if (this.targetNNList) {
             const name = this.targetNNList.id || "#1"
             options.forEach((option) => {
                 if (option.text === name) {
-                    this.$optionBox.value = option
+                    this.$listOption.value = option
                 }
             })
             if (this.targetNNList instanceof HNList) {
@@ -140,14 +131,14 @@ class NotesEditor extends Z<"div"> {
                     this.targetNNList = line.hnLists.get(name)
                 } else {
                     this.targetNNList = null;
-                    this.$optionBox.value = this.allOption
+                    this.$listOption.value = this.allOption
                 }
             } else {
                 if (line.nnLists.has(name)) {
                     this.targetNNList = line.nnLists.get(name);
                 } else {
                     this.targetNNList = null;
-                    this.$optionBox.value = this.allOption
+                    this.$listOption.value = this.allOption
                 }
             }
 
@@ -159,46 +150,41 @@ class NotesEditor extends Z<"div"> {
         this.addClass("notes-editor")
         this.selectionManager = new SelectionManager()
 
-        this.allOption = new EditableBoxOption("*", (_s, t) => {}, () => this.targetNNList = null, () => undefined, false)
 
         
         this.$statusBar = $("div").addClass("notes-editor-status-bar");
         this.append(this.$statusBar)
-        this.$optionBox = new ZEditableDropdownOptionBox([this.allOption])
-        this.$typeOption = new ZDropdownOptionBox(
-            arrayForIn([
-                "tap", "hold", "flick", "drag"
-            ], (v) => new BoxOption(v))
-            ).whenValueChange(() => this.noteType = NoteType[this.$typeOption.value.text])
-        this.$noteAboveOption = new ZDropdownOptionBox([new BoxOption("above"), new BoxOption("below")])
-            .whenValueChange(() => this.noteAbove = this.$noteAboveOption.value.text === "above");
+        this.$listOption
+        this.$typeOption.whenValueChange(() => this.noteType = NoteType[this.$typeOption.value.text])
+
+        this.$selectOption.whenValueChange((v: string) => {
+            this.selectState = SelectState[v];
+            if (this.selectState === SelectState.none) {
+                this.state = NotesEditorState.select;
+            } else {
+                this.state = NotesEditorState.selectScope;
+            }
+        });
+        this.$noteAboveSwitch.whenClickChange((checked) => this.noteAbove = checked);
+        this.$noteAboveSwitch.checked = true;
         this.notesSelection = new Set();
-        this.$selectOption = new ZDropdownOptionBox(["none", "extend", "replace", "exclude"].map(v => new BoxOption(v)))
-                                .whenValueChange((v: string) => {
-                                    this.selectState = SelectState[v];
-                                    if (this.selectState === SelectState.none) {
-                                        this.state = NotesEditorState.select;
-                                    } else {
-                                        this.state = NotesEditorState.selectScope;
-                                    }
-                                });
-        this.noteAbove = true;
-        this.$copyButton = new ZButton("Copy")
-            .onClick(() => {
-                this.copy()
-            });
-        this.$pasteButton = new ZButton("Paste")
-            .onClick(() => {
-                this.paste()
-            });
-        this.$editButton = new ZSwitch("Edit")
-            .whenClickChange((checked) => {
-                this.state = checked ? NotesEditorState.edit : NotesEditorState.select;
-            });
+        this.$copyButton.onClick(() => {
+            this.copy()
+        });
+        this.$pasteButton.onClick(() => {
+            this.paste()
+        });
+        this.$editButton.whenClickChange((checked) => {
+            this.state = checked ? NotesEditorState.edit : NotesEditorState.select;
+        });
+        this.$timeSpanInput.whenValueChange(() => {
+            this.timeSpan = this.$timeSpanInput.getNum();
+        })
         this.$statusBar.append(
-            this.$optionBox,
+            this.$listOption,
+            this.$timeSpanInput,
             this.$typeOption,
-            this.$noteAboveOption,
+            this.$noteAboveSwitch,
             this.$editButton,
             this.$copyButton,
             this.$pasteButton,
@@ -231,12 +217,9 @@ class NotesEditor extends Z<"div"> {
             // const {padding} = this;
             this.pointedPositionX = Math.round((x) / this.positionGridSpan) * this.positionGridSpan;
             const accurateBeats = y + this.lastBeats;
-            this.pointedBeats = Math.floor(accurateBeats);
-            this.beatFraction = Math.round((accurateBeats - this.pointedBeats) * editor.timeDivisor);
-            if (this.beatFraction === editor.timeDivisor) {
-                this.pointedBeats += 1;
-                this.beatFraction = 0;
-            }
+            const attached = computeAttach(this.attachableTimes, accurateBeats);
+            const timeT: TimeT = this.timeMap.get(attached);
+            this.pointedTime = timeT;
 
             switch (this.state) {
                 case NotesEditorState.selecting:
@@ -246,7 +229,6 @@ class NotesEditor extends Z<"div"> {
                         console.warn("Unexpected error: selected note does not exist");
                         break;
                     }
-                    const timeT: TimeT = [this.pointedBeats, this.beatFraction, editor.timeDivisor]
                     editor.operationList.do(new NotePropChangeOperation(this.selectedNote, "positionX", this.pointedPositionX))
                     if (this.selectingTail) {
                         editor.operationList.do(new HoldEndTimeChangeOperation(this.selectedNote, timeT))
@@ -293,9 +275,8 @@ class NotesEditor extends Z<"div"> {
                 case "r":
                     const noteType = map[e.key.toLowerCase()];
                     
-                    const {beatFraction, pointedBeats} = this
-                    const startTime: TimeT = [pointedBeats, beatFraction, editor.timeDivisor];
-                    const endTime: TimeT = this.noteType === NoteType.hold ? [pointedBeats + 1, 0, 1] : [...startTime]
+                    const startTime: TimeT = this.pointedTime;
+                    const endTime: TimeT = this.noteType === NoteType.hold ? [startTime[0] + 1, 0, 1] : [...startTime]
                     
                     const createOptions: NoteDataKPA = {
                         endTime: endTime,
@@ -340,9 +321,8 @@ class NotesEditor extends Z<"div"> {
                 this.wasEditing = false;
                 break;
             case NotesEditorState.edit:
-                const {beatFraction, pointedBeats} = this
-                const startTime: TimeT = [pointedBeats, beatFraction, editor.timeDivisor];
-                const endTime: TimeT = this.noteType === NoteType.hold ? [pointedBeats + 1, 0, 1] : [...startTime]
+                const startTime: TimeT = this.pointedTime;
+                const endTime: TimeT = this.noteType === NoteType.hold ? [startTime[0] + 1, 0, 1] : [...startTime]
                 const createOptions: NoteDataKPA = {
                     endTime: endTime,
                     startTime: startTime,
@@ -465,8 +445,6 @@ class NotesEditor extends Z<"div"> {
             
             padding,
 
-            pointedBeats,
-            beatFraction
         } = this;
         const width = canvasWidth - padding * 2
         const height = canvasHeight - padding * 2
@@ -481,9 +459,11 @@ class NotesEditor extends Z<"div"> {
         drawLine(context, -canvasWidth / 2, 0, canvasWidth / 2, 0);
         context.fillStyle = "#EEE";
         context.fillText("State:" + NotesEditorState[this.state], 0, -height + 20)
+
+        const pointedTime = this.pointedTime;
         
-        if (typeof pointedBeats === "number")
-            context.fillText(`PointedTime: ${pointedBeats}:${beatFraction}/${this.editor.timeDivisor}`, 0, -height + 70)
+        if (pointedTime)
+            context.fillText(`PointedTime: ${pointedTime[0]}:${pointedTime[1]}/${pointedTime[2]}`, 0, -height + 70)
         if (this.targetNNList && this.targetNNList.timeRanges) {
             context.fillText("Range:" + arrayForIn(this.targetNNList.timeRanges, (range) => range.join("-")).join(","), -100, -height + 50)
         }
@@ -495,7 +475,6 @@ class NotesEditor extends Z<"div"> {
         const lowerEnd = Math.ceil((-width / 2 - positionBasis) / positionGridSpan / positionRatio) * positionGridSpan
         context.strokeStyle = rgb(...this.positionGridColor)
         context.lineWidth = 1;
-        console.log(upperEnd, lowerEnd)
         // debugger;
         for (let value = lowerEnd; value < upperEnd; value += positionGridSpan) {
             const positionX = value * positionRatio + positionBasis;
@@ -504,24 +483,67 @@ class NotesEditor extends Z<"div"> {
             context.fillText(value + "", positionX, -height + padding)
             // debugger
         }
+
+
         context.strokeStyle = rgb(...this.timeGridColor)
         // 绘制时间线
         const startBeats = Math.floor(beats);
         const stopBeats = Math.ceil(beats + timeSpan);
+        context.lineWidth = 3;
+        
+        const attachableTimes = [];
+        const map = new Map<number, TimeT>();
+        const timeDivisor = editor.timeDivisor
         for (let time = startBeats; time < stopBeats; time += timeGridSpan) {
             const positionY = (time - beats)  * timeRatio
             drawLine(context, -width / 2, -positionY, width / 2, -positionY);
             context.save()
             context.fillStyle = rgb(...this.timeGridColor)
             context.fillText(time + "", -width / 2, -positionY)
+
+            attachableTimes.push(time);
+            map.set(time, [time, 0, 1]);
             
             context.lineWidth = 1
-            for (let i = 1; i < editor.timeDivisor; i++) {
-                const minorPosY = (time + i / editor.timeDivisor - beats) * timeRatio
+            for (let i = 1; i < timeDivisor; i++) {
+                const minorBeats = time + i / timeDivisor
+                const minorPosY = (minorBeats - beats) * timeRatio;
+                map.set(minorBeats, [time, i, timeDivisor]);
+                attachableTimes.push(minorBeats);
                 drawLine(context, -width / 2, -minorPosY, width / 2, -minorPosY);
             }
             context.restore()
         }
+        this.attachableTimes = attachableTimes;
+        this.timeMap = map;
+        if (true) {
+            const nnnList = this.editor.chart.nnnList;
+            this.lookList(nnnList, startBeats, stopBeats, beats);
+        }
+    }
+    lookList(nnnList: NNNList | NNList, startBeats: number, stopBeats: number, beats: number) {
+        const startNode = nnnList.getNodeAt(startBeats);
+        const endNode = nnnList.getNodeAt(stopBeats);
+        const {attachableTimes, timeMap, context, timeRatio} = this;
+        const width = this.canvas.width - 2 * this.padding;
+        context.save();
+        context.setLineDash([10, 10]);
+        context.lineWidth = 2;
+        context.strokeStyle = "#5DF";
+        for (let node: NNNOrTail | NNOrTail = startNode; node !== endNode; node = node.next) {
+            const time: TimeT = node.startTime;
+            const nodeBeats = TC.toBeats(time);
+            const posY = (nodeBeats - beats) * timeRatio;
+            drawLine(context, -width / 2, -posY, width / 2, -posY);
+            if (timeMap.has(nodeBeats)) {
+                continue;
+            }
+            timeMap.set(nodeBeats, time);
+            attachableTimes.push(nodeBeats);
+            
+        }
+        attachableTimes.sort((a, b) => a - b);
+        context.restore();
     }
     draw(beats?: number) {
         beats = beats || this.lastBeats || 0;
@@ -650,7 +672,8 @@ class NotesEditor extends Z<"div"> {
         if (this.state === NotesEditorState.selectingScope) {
             const {startingCanvasPoint, canvasPoint} = this;
             context.save()
-            context.strokeStyle = "#84F";
+            context.lineWidth = 3;
+            context.strokeStyle = SCOPING_COLOR;
             context.strokeRect(startingCanvasPoint.x, startingCanvasPoint.y, canvasPoint.x - startingCanvasPoint.x, canvasPoint.y - startingCanvasPoint.y);
             context.restore()
         }
@@ -666,7 +689,8 @@ class NotesEditor extends Z<"div"> {
         }
         while (!(noteNode.type === NodeType.TAIL) && TimeCalculator.toBeats(noteNode.startTime) < beats + timeRange) {
             const notes = noteNode.notes
-                , length = notes.length
+                , length = notes.length;
+            // 记录每个positionX处的Note数量
             const posMap = new Map<number, number>();
             for (let i = 0; i < length; i++) {
                 const note = notes[i];
@@ -681,13 +705,6 @@ class NotesEditor extends Z<"div"> {
     drawNote(beats: number, note: Note, isTruck: boolean, nth: number) {
         const context = this.context;
         const {
-            //positionGridSpan,
-            positionRatio,
-            //positionSpan: positionRange,
-            //positionBasis,
-            
-            //timeGridSpan,
-            //timeSpan: timeRange,
             timeRatio,
             
             padding,
@@ -700,6 +717,7 @@ class NotesEditor extends Z<"div"> {
         const isHold = note.type === NoteType.hold;
         let rad: number;
         if (nth !== 0){
+            // 一尺之棰，日取其半，万世不竭
             rad = Math.PI * (1 - Math.pow(2, -nth));
             context.save();
             context.translate(posX, posY);
@@ -772,18 +790,18 @@ class NotesEditor extends Z<"div"> {
 
     paste() {
         const {clipboard, lastBeats} = this;
-        const {timeDivisor} = this.editor;
         if (!clipboard || clipboard.size === 0) {
             return;
         }
         if (!lastBeats) {
             notify("Have not rendered a frame")
+            return;
         }
         const notes = [...clipboard];
         notes.sort((a: Note, b: Note) => TimeCalculator.gt(a.startTime, b.startTime) ? 1 : -1);
         const startTime: TimeT = notes[0].startTime;
         // const portions: number = Math.round(timeDivisor * lastBeats);
-        const dest: TimeT = [this.pointedBeats, this.beatFraction, timeDivisor];
+        const dest: TimeT = this.pointedTime;
         const offset: TimeT = TimeCalculator.sub(dest, startTime);
 
         

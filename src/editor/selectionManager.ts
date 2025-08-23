@@ -28,6 +28,11 @@ class SelectionManager<T> {
     refresh() {
         this.positions = []
     }
+    /**
+     * 
+     * @param entity 两种形态，一种通过左上角和宽高定义，需要选定区罩住整个矩形，另一种通过中心点、宽高和角度定义，只要罩住中心点
+     * @returns 
+     */
     add(entity: PositionEntity<T>) {
         entity.priority += this.basePriority
         this.positions.push(entity)

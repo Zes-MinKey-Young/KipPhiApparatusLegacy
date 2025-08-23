@@ -41,8 +41,9 @@ class JudgeLinesEditor extends Z<"div"> {
         }
         this._selectedLine = line;
         this.editor.notesEditor.target = line;
-        if (this.editor.judgeLineInfoEditor)
+        if (this.editor.judgeLineInfoEditor) {
             this.editor.judgeLineInfoEditor.target = line;
+        }
         this.editor.eventCurveEditors.changeTarget(line)
         const editr = this.editors.get(line);
         editr.addClass("judge-line-editor-selected")
@@ -51,6 +52,9 @@ class JudgeLinesEditor extends Z<"div"> {
         this.editor.eventCurveEditors.draw();
         this.editor.notesEditor.draw();
         this.editor.player.render();
+        if (this.editor.shownSideEditor) {
+            this.editor.shownSideEditor.update()
+        }
     }
     private orderedLayout() {
         const old = this.selectedLine;
@@ -262,10 +266,14 @@ const tips = [
     "本软件是“奇谱发生器”，不是“八股谱发生器”更不是“粪谱发生器”",
     "奇谱发生器我爱你。饮水机我爱你。李纯真我爱你。欢乐牧场我爱你。娜奇我爱你。百零六我爱你。Sildild我爱你。",
     "https://pgrfm.miraheze.org/为本软件的官方网站",
-    "KPAJSON本质上还是RPEJSON改的",
     "想出“奇谱发生器”这名字的家里得请启普了",
 
     "撤销重做、复制粘贴不需要Ctrl，直接按Z/Y/C/V即可",
+    "写拆线表演的话，为拆下来的线创建一个判定线组，会有惊喜哦",
+    "判定线组可以在侧边的判定线信息编辑器编辑。你说怎么打开？按顶栏的“切换键”",
+    "按两下“切换”键可以进入用户脚本编辑器，可以用JavaScript来写谱哦，最好在VSCode里写了再复制过来",
+    "如果有Git的话，可以在server/config.json里启用版本控制，这样谱面会保存到Git里",
+    "KPAJSON本质上还是RPEJSON改的，点“编译”可以生成RPEJSON",
 
     "男人只是在Hold里塞了100个Tap，就被Phira审核活活打断了双腿",
     "2573 + 30 ^ 2 = 3473",
