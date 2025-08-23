@@ -50,10 +50,20 @@
             #message {
                 font-size: large;
             }
+            #info {
+                position: fixed;
+                bottom: 0;
+            }
         </style>
     </head>
     <body>
         <h1>谱面列表</h1>
+        <p id="info">
+            KipPhiApparatus v<span id="version"></span> by Zes-Minkey-Young<br>MIT Licensed
+        </p>
+        <p style="font-weight: bold; font-size: larger;">
+            虽然本软件按照MIT许可证授权，但软件作者不鼓励、不支持此软件的付费再分发，请知悉。
+        </p>
         <ul id="chartList"></ul>
         <div id="message"></div>
         <a id="import" href="/import">导入谱面</a>
@@ -89,6 +99,11 @@
             } else {
                 alert("服务器未启动");
             }
+        </script>
+        <script type="module">
+            const res = await fetch("/VERSION");
+            const version = await res.text();
+            document.getElementById("version").textContent = version;
         </script>
     </body>
 </html>

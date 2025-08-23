@@ -457,6 +457,14 @@ class NotesEditor extends Z<"div"> {
         context.strokeStyle = "#EEE";
         // 基线
         drawLine(context, -canvasWidth / 2, 0, canvasWidth / 2, 0);
+
+
+        context.fillStyle = "#EEE6";
+        context.fillText(`KipPhiApparatus v${VERSION_STRING}`, -width / 2, -50);
+        context.fillText("by Zes-Minkey-Young", -width / 2, -30)
+        context.fillText("MIT Licensed", -width / 2, -10)
+
+
         context.fillStyle = "#EEE";
         context.fillText("State:" + NotesEditorState[this.state], 0, -height + 20)
 

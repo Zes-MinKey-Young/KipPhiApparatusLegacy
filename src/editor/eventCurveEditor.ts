@@ -317,6 +317,7 @@ function divideOrMul(gridSpan: number, maximum: number)  {
                 return gridSpan / i;
             }
         }
+        return gridSpan;
     }
 }
 
