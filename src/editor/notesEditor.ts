@@ -80,6 +80,7 @@ class NotesEditor extends Z<"div"> {
     readonly $pasteButton     = new ZButton("Paste")
     readonly $editButton      = new ZSwitch("Edit")
     readonly $timeSpanInput   = new ZInputBox("2").attr("placeholder", "TimeSpan").attr("size", "3");
+    readonly $xLineCountInput = new ZArrowInputBox(10).attr("placeholder", "TimeLineCount").attr("size", "3");
     mouseIn: boolean;
 
     defaultConfig = {
@@ -154,7 +155,6 @@ class NotesEditor extends Z<"div"> {
         
         this.$statusBar = $("div").addClass("notes-editor-status-bar");
         this.append(this.$statusBar)
-        this.$listOption
         this.$typeOption.whenValueChange(() => this.noteType = NoteType[this.$typeOption.value.text])
 
         this.$selectOption.whenValueChange((v: string) => {
@@ -179,10 +179,14 @@ class NotesEditor extends Z<"div"> {
         });
         this.$timeSpanInput.whenValueChange(() => {
             this.timeSpan = this.$timeSpanInput.getNum();
+        });
+        this.$xLineCountInput.whenValueChange((num: number) => {
+            this.positionGridSpan = 1350 / num;
         })
         this.$statusBar.append(
             this.$listOption,
             this.$timeSpanInput,
+            this.$xLineCountInput,
             this.$typeOption,
             this.$noteAboveSwitch,
             this.$editButton,
@@ -481,16 +485,20 @@ class NotesEditor extends Z<"div"> {
         // 计算上下界
         const upperEnd = Math.ceil((width / 2 - positionBasis) / positionGridSpan / positionRatio) * positionGridSpan
         const lowerEnd = Math.ceil((-width / 2 - positionBasis) / positionGridSpan / positionRatio) * positionGridSpan
-        context.strokeStyle = rgb(...this.positionGridColor)
+        context.strokeStyle = context.fillStyle = rgb(...this.positionGridColor)
         context.lineWidth = 1;
-        // debugger;
+        context.textAlign = "center";
+        let odd = true;
         for (let value = lowerEnd; value < upperEnd; value += positionGridSpan) {
             const positionX = value * positionRatio + positionBasis;
             drawLine(context, positionX, -height + padding, positionX, 0);
-            context.fillStyle = rgb(...this.positionGridColor)
-            context.fillText(value + "", positionX, -height + padding)
+            if (odd) {
+                context.fillText(Math.round(value) + "", positionX, -height + padding);
+            }
+            odd = !odd
             // debugger
         }
+        context.textAlign = "left";
 
 
         context.strokeStyle = rgb(...this.timeGridColor)
@@ -507,7 +515,7 @@ class NotesEditor extends Z<"div"> {
             drawLine(context, -width / 2, -positionY, width / 2, -positionY);
             context.save()
             context.fillStyle = rgb(...this.timeGridColor)
-            context.fillText(time + "", -width / 2, -positionY)
+            context.fillText(time + "", -width / 2, -positionY - 4)
 
             attachableTimes.push(time);
             map.set(time, [time, 0, 1]);

@@ -211,40 +211,51 @@ class Player {
         context.save()
 
         const showInfo = settings.get("playerShowInfo");
+
+        const setTransform = (lineOrNull: JudgeLine | null) => {
+            if (!lineOrNull) {
+                context.setTransform(identity.translate(675, 450));
+            } else {
+                context.setTransform(lineOrNull.renderMatrix);
+                context.scale(1, -1)
+            }
+        }
+
         if (showInfo) {
-            console.log(context.getTransform())
             this.computeCombo();
             context.fillStyle = "#ddd"
             context.font = "40px phigros"
+
+
             const chart = this.chart;
             const title = chart.name;
             const level = chart.level;
             const combo = this.currentCombo;
+            setTransform(chart.nameAttach)
             context.fillText(title, -600, 400);
 
             const metrics = context.measureText(level)
+            setTransform(chart.levelAttach)
             context.fillText(level, 600 - metrics.width, 400);
 
             const score = combo / chart.maxCombo * 100_0000;
             const text = score.toFixed(0).padStart(7, "0")
-            const scoreMetrics = context.measureText(text);
-            context.fillText(text, 600 -scoreMetrics.width, -400);
+            setTransform(chart.scoreAttach)
+            context.textAlign = "right";
+            context.fillText(text, 600, -400);
 
             if (combo >= 3) {
+                context.textAlign = "center";
                 
                 context.font = "60px phigros"
-                const comboNumMetrics = context.measureText(combo.toString());
-                context.fillText(combo.toString(), -comboNumMetrics.width / 2, -400);
+                setTransform(chart.combonumberAttach)
+                context.fillText(combo.toString(), 0, -400);
 
                 context.font = "20px phigros";
-                const comboMetrics = context.measureText(COMBO_TEXT);
                 const h = 32;
-                context.fillText(COMBO_TEXT, -comboMetrics.width / 2, -400 + h);
+                setTransform(chart.comboAttach)
+                context.fillText(COMBO_TEXT, 0, -400 + h);
             }
-
-
-
-
 
 
             context.restore()
@@ -261,7 +272,7 @@ class Player {
         const beats = this.beats;
         // const timeCalculator = this.chart.timeCalculator
         const alpha = judgeLine.getStackedValue("alpha", beats);
-        if (judgeLine.nnLists.size === 0 && judgeLine.hnLists.size === 0 && alpha <= 0 && judgeLine.children.size === 0) {
+        if (judgeLine.nnLists.size === 0 && judgeLine.hnLists.size === 0 && alpha <= 0 && judgeLine.children.size === 0 && !judgeLine.hasAttachUI) {
             return;
         }
         const x = judgeLine.getStackedValue("moveX", beats);
@@ -271,14 +282,15 @@ class Player {
         judgeLine.moveY = y;
         judgeLine.rotate = theta;
         judgeLine.alpha = alpha;
-        // console.log(x, y, theta, alpha);
-        // console.time("calculate coordinate");
+
+
+
         const {x: transformedX, y: transformedY} = new Coordinate(x, y).mul(matrix);
         const myMatrix = judgeLine.rotatesWithFather ? matrix.translate(x, y).rotate(-theta) : identity.translate(transformedX, transformedY).rotate(-theta).scale(1, -1);
-        // console.timeEnd("calculate coordinate");
-        // console.time("transform");
+        
         context.setTransform(myMatrix);
-        // console.timeEnd("transform");
+        // Cache a matrix
+        judgeLine.renderMatrix = myMatrix;
 
         if (judgeLine.children.size !== 0) {
             for (let line of judgeLine.children) {

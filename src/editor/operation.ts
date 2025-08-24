@@ -11,6 +11,11 @@ class OperationEvent extends Event {
     }
 }
 
+class OperationErrorEvent extends OperationEvent {
+    constructor(operation: Operation, public error: Error) {
+        super("error", operation);
+    }
+}
 
 class OperationList extends EventTarget {
     operations: Operation[];
@@ -27,8 +32,14 @@ class OperationList extends EventTarget {
                 this.chart.modified = true;
                 this.dispatchEvent(new Event("firstmodified"))
             }
+            
+            try {
+                op.undo(this.chart);
+            } catch (e) {
+                this.dispatchEvent(new OperationErrorEvent(e as Error))
+                return
+            }
             this.undoneOperations.push(op)
-            op.undo(this.chart)
             this.dispatchEvent(new OperationEvent("undo", op))
             this.processFlags(op);
         } else {
@@ -42,8 +53,14 @@ class OperationList extends EventTarget {
                 this.chart.modified = true;
                 this.dispatchEvent(new Event("firstmodified"))
             }
+            
+            try {
+                op.do(this.chart);
+            } catch (e) {
+                this.dispatchEvent(new OperationErrorEvent(e as Error))
+                return
+            }
             this.operations.push(op)
-            op.do(this.chart)
             this.dispatchEvent(new OperationEvent("redo", op))
             this.processFlags(op);
         } else {
@@ -70,7 +87,12 @@ class OperationList extends EventTarget {
                 }
             }
         }
-        operation.do(this.chart);
+        try {
+            operation.do(this.chart);
+        } catch (e) {
+            this.dispatchEvent(new OperationErrorEvent(e as Error))
+            return
+        }
         this.dispatchEvent(new OperationEvent("do", operation));
         this.processFlags(operation);
         this.operations.push(operation);
@@ -949,5 +971,37 @@ class EventNodeSequenceRenameOperation extends Operation {
         chart.sequenceMap.set(this.originalName, this.sequence)
         chart.sequenceMap.delete(this.newName);
         this.sequence.id = this.originalName;
+    }
+}
+
+class AttachUIOperation extends Operation {
+    updatesEditor = true;
+    constructor(public judgeLine: JudgeLine, public ui: UIName) {
+        super();
+    }
+    do(chart: Chart) {
+        chart.attachUIToLine(this.ui, this.judgeLine);
+    }
+    undo(chart: Chart) {
+        chart.detachUI(this.ui);
+    }
+}
+
+class DetachJudgeLineOperation extends Operation {
+    updatesEditor = true;
+    uinames: UIName[];
+    constructor(public judgeLine: JudgeLine) {
+        super();
+    }
+    do(chart: Chart) {
+        this.uinames = chart.queryJudgeLineUI(this.judgeLine);
+        for (let ui of this.uinames) {
+            chart.detachUI(ui);
+        }
+    }
+    undo(chart: Chart) {
+        for (let ui of this.uinames) {
+            chart.attachUIToLine(ui, this.judgeLine);
+        }
     }
 }

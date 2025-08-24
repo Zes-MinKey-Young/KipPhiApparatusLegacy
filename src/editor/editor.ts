@@ -446,7 +446,7 @@ class Editor extends EventTarget {
         });
         // Time Divisor (the third number in TimeTuple)
         this.$timeDivisor = new ZArrowInputBox()
-        this.$timeDivisor.onChange((n) => {
+        this.$timeDivisor.whenValueChange((n) => {
             this.timeDivisor = n;
             this.update()
         })
@@ -537,7 +537,10 @@ class Editor extends EventTarget {
             });
             this.operationList.addEventListener("maxcombochanged", () => {
                 this.chart.countMaxCombo();
-            })
+            });
+            this.operationList.addEventListener("error", (e: OperationErrorEvent) => {
+                notify(e.error.message);
+            });
             // @ts-expect-error
             this.operationList.addEventListener("needsreflow", (ev: NeedsReflowEvent) => {
                 if (this.judgeLinesEditor.layoutType & ev.condition) {

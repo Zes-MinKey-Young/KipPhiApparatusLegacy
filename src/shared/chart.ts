@@ -65,7 +65,7 @@ function arrayForIn<T, RT>(arr: T[], expr: (v: T) => RT, guard?: (v: T) => boole
 }
 
 
-
+type UIName = "combo"  | "combonumber" | "score" | "pause" | "bar" | "name" | "level"
 
 class Chart {
     judgeLines: JudgeLine[] = [];
@@ -93,6 +93,15 @@ class Chart {
     
     modified: boolean = false;
     maxCombo: number = 0;
+
+    pauseAttach:       JudgeLine | null = null;
+    combonumberAttach: JudgeLine | null = null;
+    comboAttach:       JudgeLine | null = null;
+    barAttach:         JudgeLine | null = null;
+    scoreAttach:       JudgeLine | null = null;
+    nameAttach:        JudgeLine | null = null;
+    levelAttach:       JudgeLine | null = null;
+
     constructor() {}
     getEffectiveBeats() {
         const effectiveBeats = this.timeCalculator.secondsToBeats(this.duration)
@@ -181,6 +190,17 @@ class Chart {
         }
         chart.judgeLines.sort((a, b) => a.id - b.id);
         chart.countMaxCombo();
+        
+        const ui = data.ui;
+        if (ui) for (const uiname of ["combo", "combonumber", "score", "pause", "bar", "name", "level"] satisfies UIName[]) {
+            if (ui[uiname]) {
+                const line = chart.judgeLines[ui[uiname]]
+                if (!line) {
+                    continue;
+                }
+                chart.attachUIToLine(uiname, line);
+            }
+        }
         return chart;
     }
     updateCalculator() {
@@ -216,6 +236,15 @@ class Chart {
                 level: this.level,
                 name: this.name
             },
+            ui: {
+                combo: this.comboAttach?.id,
+                combonumber: this.combonumberAttach?.id,
+                score: this.scoreAttach?.id,
+                pause: this.pauseAttach?.id,
+                bar: this.barAttach?.id,
+                name: this.nameAttach?.id,
+                level: this.levelAttach?.id
+            },
             offset: this.offset,
             orphanLines: orphanLines,
             judgeLineGroups: this.judgeLineGroups.map(g => g.name),
@@ -245,6 +274,42 @@ class Chart {
         }
         this.maxCombo = combo;
     }
+    attachUIToLine(ui: UIName, judgeLine: JudgeLine) {
+        const key = `${ui}Attach` satisfies keyof Chart;
+        if (this[key]) {
+            throw new Error(`UI ${ui} is occupied`);
+        }
+        this[key] = judgeLine;
+        judgeLine.hasAttachUI = true;
+    }
+    detachUI(ui: UIName) {
+        const key = `${ui}Attach` satisfies keyof Chart;
+        const judgeLine = this[key];
+        if (!judgeLine) {
+            return;
+        }
+        this[key] = null;
+        if (![ // 看着好丑
+            this.barAttach,
+            this.nameAttach,
+            this.comboAttach,
+            this.scoreAttach,
+            this.combonumberAttach,
+            this.levelAttach,
+            this.pauseAttach
+        ].includes(judgeLine)) {
+                judgeLine.hasAttachUI = false;
+            }
+    }
+    queryJudgeLineUI(judgeLine: JudgeLine): UIName[] {
+        const arr: UIName[] = [];
+        for (const ui of ["combo", "combonumber", "score", "pause", "bar", "name", "level"] satisfies UIName[]) {
+            if (this[`${ui}Attach` satisfies keyof Chart] === judgeLine) {
+                arr.push(ui);
+            }
+        }
+        return arr;
+    } 
 }
 
 class JudgeLineGroup {

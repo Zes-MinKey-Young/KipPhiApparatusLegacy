@@ -542,6 +542,10 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
     readonly $newGroup          = new ZInputBox("");
     readonly $createGroup       = new ZButton("Create");
     readonly $createLine        = new ZButton("Create");
+    readonly $attachUI          = new ZDropdownOptionBox(
+        (["null", "pause", "combo", "combonumber", "score", "level", "bar", "name"] satisfies ("null" | UIName)[])
+            .map(name => new BoxOption(name))
+    )
     readonly $rotatesWithFather = new ZSwitch("no", "yes");
     readonly $del               = new ZButton("Delete").addClass("destructive");
     readonly $setAsBindNote     = new ZButton("Set as note binding").addClass("progressive");
@@ -560,6 +564,7 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
         this.$body.append(
             $("span").text("Father"), this.$father,
             $("span").text("Group"), this.$group,
+            $("span").text("Attach UI"), this.$attachUI,
             $("span").text("Rotates with father"), this.$rotatesWithFather,
             $("span").text("New Group"), $("div").append(this.$newGroup, this.$createGroup),
             $("span").text("New Line"), this.$createLine,
@@ -591,6 +596,16 @@ class JudgeLineInfoEditor extends SideEntityEditor<JudgeLine> {
                 }
                 editor.operationList.do(new JudgeLineInheritanceChangeOperation(editor.chart, this.target, father));
             }
+        });
+        this.$attachUI.whenValueChange((uiname) => {
+            if (!this.target) {
+                notify("The target of this editor has been garbage-collected");
+                return;
+            }
+            if (uiname === "null") {
+                editor.operationList.do(new DetachJudgeLineOperation(this.target))
+            }
+            editor.operationList.do(new AttachUIOperation(this.target, uiname as UIName));
         });
         this.$createGroup.onClick(() => {
             if (!this.target) {

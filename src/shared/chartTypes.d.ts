@@ -295,6 +295,15 @@ interface ChartDataKPA {
     info: {
         level: string;
         name: string
+    };
+    ui: {
+        pause: number;
+        combonumber: number;
+        combo: number;
+        score: number;
+        bar: number;
+        name: number;
+        level: number;
     }
     envEasings: CustomEasingData[]; // New!
     eventNodeSequences: EventNodeSequenceDataKPA[];

@@ -25,6 +25,13 @@ class JudgeLine {
     rotate: number;
     alpha: number;
 
+    hasAttachUI: boolean = false;
+
+    /**
+     * 每帧渲染时所用的变换矩阵，缓存下来用于之后的UI绑定渲染
+     */
+    renderMatrix: Matrix;
+
     rotatesWithFather: boolean = false;
 
     id: number;
@@ -44,6 +51,15 @@ class JudgeLine {
         chart.judgeLineGroups[data.Group].add(line);
         line.cover = Boolean(data.isCover);
         line.rotatesWithFather = data.rotate_with_father;
+
+        // Process UI
+        if (data.attachUI) {
+            // Must use template string, otherwise TypeScript would not recognize it as `keyof Chart`
+            // because the type is broadened to `string`
+            // And you cannot assign it to a variable
+            chart[`${data.attachUI}Attach` satisfies keyof Chart] = line;
+            line.hasAttachUI = true;
+        }
 
         const noteNodeTree = chart.nnnList;
         if (data.notes) {

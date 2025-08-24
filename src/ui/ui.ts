@@ -292,7 +292,7 @@ class ZArrowInputBox extends Z<"div"> {
     $up: Z<"div">;
     $down: Z<"div">;
     $input: ZInputBox;
-    constructor() {
+    constructor(defaultValue?: number) {
         super("div")
         this.scale = 1
         this.$input = new ZInputBox();
@@ -318,6 +318,9 @@ class ZArrowInputBox extends Z<"div"> {
         this.$input.whenValueChange(() => {
             this.dispatchEvent(new ZValueChangeEvent())
         })
+        if (defaultValue) {
+            this.setValue(defaultValue)
+        }
     }
     getValue() {
         return this.$input.getNum()
@@ -326,7 +329,7 @@ class ZArrowInputBox extends Z<"div"> {
         this.$input.setValue(val + "")
         return this
     }
-    onChange(callback: (content: number, e: Event) => any) {
+    whenValueChange(callback: (content: number, e: Event) => any) {
         this.addEventListener("valueChange", (e) => callback(this.getValue(), e))
         return this;
     }
@@ -702,7 +705,7 @@ class ZEasingBox extends Z<"div"> {
     constructor(dropdownUp: boolean=false) {
         super("div")
         this.$input = new ZArrowInputBox()
-            .onChange((num) => {
+            .whenValueChange((num) => {
                 const easing = easingArray[num]
                 this.$easeType.value = EasingOptions.easeTypeOptionsMapping[easing.easeType];
                 this.$funcType.value = EasingOptions.funcTypeOptionsMapping[easing.funcType];
