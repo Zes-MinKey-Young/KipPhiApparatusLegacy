@@ -193,7 +193,7 @@ class Chart {
         
         const ui = data.ui;
         if (ui) for (const uiname of ["combo", "combonumber", "score", "pause", "bar", "name", "level"] satisfies UIName[]) {
-            if (ui[uiname]) {
+            if (typeof ui[uiname] === "number") { // 踩坑，线号可为0
                 const line = chart.judgeLines[ui[uiname]]
                 if (!line) {
                     continue;
