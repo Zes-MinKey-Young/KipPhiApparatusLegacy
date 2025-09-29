@@ -1,4 +1,4 @@
-**此仓库不会接受后续更新，1.7版本将另建仓库发布。（也可能是2.0版本，敬请期待）**
+# 仓库已迁移，[迁移后的仓库](https://github.com/Zes-Minkey-Young/KipPhiApparatus)也已停更，请期待KPA2！
 
 **[Phigros自制谱Wiki](https://pgrfm.miraheze.org/)为本软件的官方网站。**
 
